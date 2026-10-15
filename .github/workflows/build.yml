@@ -62,6 +62,4 @@ jobs:
         with:
           name: ios-unsigned-app-not-installable
           path: dist/*.zip
-          if-no-files-found: error-unsigned-app-not-installable
-          path: dist/*.zip
           if-no-files-found: error
