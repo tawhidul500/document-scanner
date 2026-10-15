@@ -8,13 +8,15 @@ void main() {
   testWidgets('Recent filters, search, opening and live deletion', (
     tester,
   ) async {
-    final directory = await Directory.systemTemp.createTemp('recent_test_');
+    final directory = Directory.systemTemp.createTempSync('recent_test_');
     final store = DocumentStore(directory);
     String? opened;
     try {
-      for (final kind in ScanKind.values) {
-        await store.addBytes([65], kind, 'txt', name: 'Sample_${kind.name}');
-      }
+      await tester.runAsync(() async {
+        for (final kind in ScanKind.values) {
+          await store.addBytes([65], kind, 'txt', name: 'Sample_${kind.name}');
+        }
+      });
       await tester.pumpWidget(
         MaterialApp(
           home: RecentFilesScreen(
@@ -59,7 +61,7 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     } finally {
       store.dispose();
-      await directory.delete(recursive: true);
+      directory.deleteSync(recursive: true);
     }
   });
 }

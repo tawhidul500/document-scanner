@@ -26,7 +26,7 @@ run(sys.executable, 'tool/setup.py', '--org', args.org, '--skip-checks')
 run(flutter, 'pub', 'get')
 run(flutter, 'pub', 'run', 'flutter_native_splash:create')
 run(flutter, 'analyze')
-run(flutter, 'test')
+run(flutter, 'test', '--reporter', 'expanded', '--timeout', '2m')
 defines = []
 if args.defines:
     defines = ['--dart-define-from-file=' + str(args.defines.resolve())]

@@ -17,10 +17,10 @@ void main() {
     addTearDown(tester.view.reset);
     final font = FontLoader('Inter')
       ..addFont(rootBundle.load('assets/fonts/Inter.ttf'));
-    await font.load();
-    final dir = await Directory.systemTemp.createTemp('preview_');
+    await tester.runAsync(font.load);
+    final dir = Directory.systemTemp.createTempSync('preview_');
     final store = DocumentStore(dir);
-    await store.load();
+    await tester.runAsync(store.load);
     final key = GlobalKey();
     await tester.pumpWidget(
       MaterialApp(
@@ -47,6 +47,6 @@ void main() {
     }
     await tester.pumpWidget(const SizedBox.shrink());
     store.dispose();
-    await dir.delete(recursive: true);
+    dir.deleteSync(recursive: true);
   });
 }

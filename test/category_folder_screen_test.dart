@@ -10,13 +10,15 @@ void main() {
     testWidgets('${kind.label} uses shared select/all/none behavior', (
       tester,
     ) async {
-      final directory = await Directory.systemTemp.createTemp('category_test_');
+      final directory = Directory.systemTemp.createTempSync('category_test_');
       final store = DocumentStore(directory);
       try {
-        await store.addBytes([65], kind, 'txt', name: 'First');
-        await store.addBytes([66], kind, 'txt', name: 'Second');
-        final other = ScanKind.values.firstWhere((k) => k != kind);
-        await store.addBytes([67], other, 'txt', name: 'Other category');
+        await tester.runAsync(() async {
+          await store.addBytes([65], kind, 'txt', name: 'First');
+          await store.addBytes([66], kind, 'txt', name: 'Second');
+          final other = ScanKind.values.firstWhere((k) => k != kind);
+          await store.addBytes([67], other, 'txt', name: 'Other category');
+        });
         await tester.pumpWidget(
           MaterialApp(
             home: DocumentFolderScreen(
@@ -58,13 +60,13 @@ void main() {
         await tester.pumpWidget(const SizedBox());
       } finally {
         store.dispose();
-        await directory.delete(recursive: true);
+        directory.deleteSync(recursive: true);
       }
     });
   }
 
   test('category folder metadata is isolated and survives reload', () async {
-    final directory = await Directory.systemTemp.createTemp('category_store_');
+    final directory = Directory.systemTemp.createTempSync('category_store_');
     final store = DocumentStore(directory);
     try {
       for (final kind in ScanKind.values) {
@@ -87,12 +89,12 @@ void main() {
           throwsStateError,
         );
       }
-      await store.load();
+      await tester.runAsync(store.load);
       expect(store.unreadableRecords, 0);
       expect(store.files.length, 4);
     } finally {
       store.dispose();
-      await directory.delete(recursive: true);
+      directory.deleteSync(recursive: true);
     }
   });
 }

@@ -26,12 +26,14 @@ void main() {
     tester.view.physicalSize = const Size(375, 813);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final doc = await store.addBytes(
-      utf8.encode('test QR'),
-      ScanKind.qr,
-      'txt',
-    );
-    await store.rename(doc, 'My QR');
+    await tester.runAsync(() async {
+      final doc = await store.addBytes(
+        utf8.encode('test QR'),
+        ScanKind.qr,
+        'txt',
+      );
+      await store.rename(doc, 'My QR');
+    });
     await tester.pumpWidget(MaterialApp(home: HomeScreen(store: store)));
     await tester.pumpAndSettle();
     expect(find.text('Scan Options'), findsOneWidget);

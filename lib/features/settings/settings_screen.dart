@@ -231,24 +231,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     ),
   );
-  Widget _card(List<Widget> rows) => Container(
-    margin: const EdgeInsets.only(bottom: 5),
-    decoration: BoxDecoration(
+  Widget _card(List<Widget> rows) => Padding(
+    padding: const EdgeInsets.only(bottom: 5),
+    child: Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(15),
-      border: Border.all(color: const Color(0xFFEDF0F7)),
-    ),
-    child: Column(
-      children: [
-        for (var i = 0; i < rows.length; i++) ...[
-          if (i > 0)
-            const Padding(
-              padding: EdgeInsetsDirectional.only(start: 62, end: 16),
-              child: Divider(height: 1, color: Color(0xFFE5EBF5)),
-            ),
-          rows[i],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: const BorderSide(color: Color(0xFFEDF0F7)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0)
+              const Padding(
+                padding: EdgeInsetsDirectional.only(start: 62, end: 16),
+                child: Divider(height: 1, color: Color(0xFFE5EBF5)),
+              ),
+            rows[i],
+          ],
         ],
-      ],
+      ),
     ),
   );
   Widget _row(

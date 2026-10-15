@@ -12,9 +12,9 @@ void main() {
   testWidgets('startup waits for work, not the six-second animation', (
     tester,
   ) async {
-    final dir = await Directory.systemTemp.createTemp('startup_test_');
+    final dir = Directory.systemTemp.createTempSync('startup_test_');
     final store = DocumentStore(dir);
-    await store.load();
+    await tester.runAsync(store.load);
     final completion = Completer<DocumentStore>();
     late ValueChanged<double> report;
     await tester.pumpWidget(
@@ -54,15 +54,15 @@ void main() {
     expect(find.byType(HomeScreen), findsOneWidget);
     expect(find.byType(SplashScreen), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
-    await dir.delete(recursive: true);
+    dir.deleteSync(recursive: true);
   });
 
   testWidgets('failed startup offers retry and fast success opens Home', (
     tester,
   ) async {
-    final dir = await Directory.systemTemp.createTemp('startup_retry_');
+    final dir = Directory.systemTemp.createTempSync('startup_retry_');
     final store = DocumentStore(dir);
-    await store.load();
+    await tester.runAsync(store.load);
     var attempts = 0;
     await tester.pumpWidget(
       MaterialApp(
@@ -81,7 +81,7 @@ void main() {
     await tester.pump();
     expect(find.byType(HomeScreen), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
-    await dir.delete(recursive: true);
+    dir.deleteSync(recursive: true);
   });
 
   testWidgets('splash progress fits a small phone with safe insets', (
