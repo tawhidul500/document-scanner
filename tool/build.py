@@ -31,7 +31,46 @@ defines = []
 if args.defines:
     defines = ['--dart-define-from-file=' + str(args.defines.resolve())]
 if args.target == 'apk':
-    run(flutter, 'build', 'apk', '--release', '--no-shrink', *defines)
+    # --- R8 fix: ignore missing ML Kit non-Latin recognizer classes ---
+    _app = root / 'android' / 'app'
+    _app.mkdir(parents=True, exist_ok=True)
+    (_app / 'proguard-rules.pro').write_text(
+        '-dontwarn com.google.mlkit.vision.text.chinese.**\n'
+        '-dontwarn com.google.mlkit.vision.text.devanagari.**\n'
+        '-dontwarn com.google.mlkit.vision.text.japanese.**\n'
+        '-dontwarn com.google.mlkit.vision.text.korean.**\n',
+        encoding='utf-8',
+    )
+    for _name in ('build.gradle.kts', 'build.gradle'):
+        _gradle = _app / _name
+        if not _gradle.exists():
+            continue
+        _src = _gradle.read_text(encoding='utf-8')
+        if 'proguard-rules.pro' not in _src:
+            if _name.endswith('.kts'):
+                _src += (
+                    '\nandroid {\n'
+                    '    buildTypes {\n'
+                    '        getByName("release") {\n'
+                    '            proguardFiles("proguard-rules.pro")\n'
+                    '        }\n'
+                    '    }\n'
+                    '}\n'
+                )
+            else:
+                _src += (
+                    "\nandroid {\n"
+                    "    buildTypes {\n"
+                    "        release {\n"
+                    "            proguardFiles 'proguard-rules.pro'\n"
+                    "        }\n"
+                    "    }\n"
+                    "}\n"
+                )
+            _gradle.write_text(_src, encoding='utf-8')
+        break
+    # --- end R8 fix ---
+    run(flutter, 'build', 'apk', '--release', *defines)
     source = root / 'build/app/outputs/flutter-apk/app-release.apk'
     destination = root / 'dist/document-scanner-android-test.apk'
     destination.parent.mkdir(exist_ok=True)
