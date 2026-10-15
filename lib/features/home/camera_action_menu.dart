@@ -74,6 +74,7 @@ class CameraActionMenu extends StatelessWidget {
         child: FocusTraversalGroup(
           child: Semantics(
             scopesRoute: true,
+            explicitChildNodes: true,
             namesRoute: true,
             label: 'Scan options',
             child: Stack(

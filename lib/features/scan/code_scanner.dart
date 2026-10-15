@@ -499,7 +499,13 @@ class CodeResultCard extends StatelessWidget {
           children: [
             Icon(icon, size: 14),
             const SizedBox(width: 4),
-            Text(label, style: const TextStyle(fontSize: 13)),
+            Flexible(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
           ],
         ),
       );

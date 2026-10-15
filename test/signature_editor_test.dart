@@ -25,8 +25,11 @@ void main() {
   ) async {
     await tester.pumpWidget(const MaterialApp(home: SignatureDrawScreen()));
     expect(find.text('Sign here'), findsOneWidget);
-    IconButton useButton() =>
-        tester.widget<IconButton>(find.byTooltip('Use signature'));
+    IconButton useButton() => tester.widget<IconButton>(
+      find.byWidgetPredicate(
+        (widget) => widget is IconButton && widget.tooltip == 'Use signature',
+      ),
+    );
     expect(useButton().onPressed, isNull);
     final canvas = find.byKey(const ValueKey('signature-canvas'));
     await tester.dragFrom(
@@ -57,7 +60,14 @@ void main() {
     await tester.dragFrom(origin + const Offset(80, 150), const Offset(40, 20));
     await tester.pump();
     expect(
-      tester.widget<IconButton>(find.byTooltip('Redo stroke')).onPressed,
+      tester
+          .widget<IconButton>(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is IconButton && widget.tooltip == 'Redo stroke',
+            ),
+          )
+          .onPressed,
       isNull,
     );
   });
