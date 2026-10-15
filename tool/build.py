@@ -31,7 +31,7 @@ defines = []
 if args.defines:
     defines = ['--dart-define-from-file=' + str(args.defines.resolve())]
 if args.target == 'apk':
-    run(flutter, 'build', 'apk', '--release', *defines)
+    run(flutter, 'build', 'apk', '--release', '--no-shrink', *defines)
     source = root / 'build/app/outputs/flutter-apk/app-release.apk'
     destination = root / 'dist/document-scanner-android-test.apk'
     destination.parent.mkdir(exist_ok=True)
