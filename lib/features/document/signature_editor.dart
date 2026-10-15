@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -236,6 +237,8 @@ class _SignatureDrawScreenState extends State<SignatureDrawScreen> {
         return GestureDetector(
           key: const ValueKey('signature-canvas'),
           behavior: HitTestBehavior.opaque,
+          // Begin the stroke where the finger lands, not after the pan slop.
+          dragStartBehavior: DragStartBehavior.down,
           onPanStart: (event) => setState(() {
             redo.clear();
             strokes.add([point(event.localPosition)]);
