@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:image/image.dart' as img;
 
@@ -67,7 +68,7 @@ Future<void> main() async {
   check(img.decodeJpg(signed) != null, 'Bad signature');
   final pdf = await buildDocumentPdf([bytes, rotated]);
   check(String.fromCharCodes(pdf.take(5)) == '%PDF-', 'Bad PDF');
-  print(
+  stdout.writeln(
     'PASS: contour + blank rejection, stable timing, duplicate prevention, rearm, rotation, crop, signature, PDF creation.',
   );
 }

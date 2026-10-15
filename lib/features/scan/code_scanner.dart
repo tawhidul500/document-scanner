@@ -30,7 +30,7 @@ class _CodeScannerState extends State<CodeScanner>
             BarcodeFormat.codabar,
             BarcodeFormat.ean13,
             BarcodeFormat.ean8,
-            BarcodeFormat.itf,
+            BarcodeFormat.itf14,
             BarcodeFormat.upcA,
             BarcodeFormat.upcE,
             BarcodeFormat.pdf417,

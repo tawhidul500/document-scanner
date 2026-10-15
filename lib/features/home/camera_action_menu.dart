@@ -45,9 +45,9 @@ class CameraActionMenu extends StatelessWidget {
       53.0,
       textFactor > 1.6 ? 20 + 41.6 * textFactor : 28 + 22 * textFactor,
     );
-    final menuWidth = math.min(
+    final double menuWidth = math.min<double>(
       media.size.width - 32,
-      math.max(194.0, 194 * math.min(textFactor, 1.6)),
+      math.max(194.0, 194.0 * math.min(textFactor, 1.6)),
     );
     final bottom = math.max(
       media.viewPadding.bottom + 16,
