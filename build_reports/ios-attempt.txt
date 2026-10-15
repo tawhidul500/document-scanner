@@ -1,0 +1,1 @@
+iOS compilation requires macOS with Xcode. IPA additionally needs Apple signing configured.

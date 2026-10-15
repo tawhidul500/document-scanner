@@ -1,0 +1,46 @@
+   Woah! You appear to be trying to run flutter as root.
+   We strongly recommend running the flutter tool without superuser privileges.
+  /
+📎
+Building flutter tool...
+../../runtime/vm/os_thread.cc: 50: error: Failed to retrieve stack bounds
+version=3.13.5 (stable) (Tue Sep 29 01:00:52 2026 -0700) on "linux_x64"
+pid=38, thread=38, isolate_group=(nil)((nil)), isolate=(nil)((nil))
+os=linux, arch=x64, comp=no, sim=no
+isolate_instructions=0, vm_instructions=0
+fp=7ffe0a92e010, sp=7ffe0a92dff0, pc=55e20aa0af92
+Stack dump aborted because GetAndValidateCurrentThreadStackBounds failed.
+  pc 0x000055e20aa0af92 fp 0x00007ffe0a92e010 /workspace/scratch/76406e3d33b6/build_tools/flutter/bin/cache/dart-sdk/bin/dart+0x3a9f92
+/workspace/scratch/76406e3d33b6/build_tools/flutter/bin/internal/shared.sh: line 23:    38 Aborted                 "$DART" pub upgrade --suppress-analytics 1>&2
+Error: Unable to 'pub upgrade' flutter tool. Retrying in five seconds... (9 tries left)
+../../runtime/vm/os_thread.cc: 50: error: Failed to retrieve stack bounds
+version=3.13.5 (stable) (Tue Sep 29 01:00:52 2026 -0700) on "linux_x64"
+pid=42, thread=42, isolate_group=(nil)((nil)), isolate=(nil)((nil))
+os=linux, arch=x64, comp=no, sim=no
+isolate_instructions=0, vm_instructions=0
+fp=7ffd23294a60, sp=7ffd23294a40, pc=56030bd18f92
+Stack dump aborted because GetAndValidateCurrentThreadStackBounds failed.
+  pc 0x000056030bd18f92 fp 0x00007ffd23294a60 /workspace/scratch/76406e3d33b6/build_tools/flutter/bin/cache/dart-sdk/bin/dart+0x3a9f92
+/workspace/scratch/76406e3d33b6/build_tools/flutter/bin/internal/shared.sh: line 23:    42 Aborted                 "$DART" pub upgrade --suppress-analytics 1>&2
+Error: Unable to 'pub upgrade' flutter tool. Retrying in five seconds... (8 tries left)
+../../runtime/vm/os_thread.cc: 50: error: Failed to retrieve stack bounds
+version=3.13.5 (stable) (Tue Sep 29 01:00:52 2026 -0700) on "linux_x64"
+pid=46, thread=46, isolate_group=(nil)((nil)), isolate=(nil)((nil))
+os=linux, arch=x64, comp=no, sim=no
+isolate_instructions=0, vm_instructions=0
+fp=7ffcc08f5bb0, sp=7ffcc08f5b90, pc=55739acdff92
+Stack dump aborted because GetAndValidateCurrentThreadStackBounds failed.
+  pc 0x000055739acdff92 fp 0x00007ffcc08f5bb0 /workspace/scratch/76406e3d33b6/build_tools/flutter/bin/cache/dart-sdk/bin/dart+0x3a9f92
+/workspace/scratch/76406e3d33b6/build_tools/flutter/bin/internal/shared.sh: line 23:    46 Aborted                 "$DART" pub upgrade --suppress-analytics 1>&2
+Error: Unable to 'pub upgrade' flutter tool. Retrying in five seconds... (7 tries left)
+../../runtime/vm/os_thread.cc: 50: error: Failed to retrieve stack bounds
+version=3.13.5 (stable) (Tue Sep 29 01:00:52 2026 -0700) on "linux_x64"
+pid=50, thread=50, isolate_group=(nil)((nil)), isolate=(nil)((nil))
+os=linux, arch=x64, comp=no, sim=no
+isolate_instructions=0, vm_instructions=0
+fp=7ffc67d17800, sp=7ffc67d177e0, pc=560b8ff53f92
+Stack dump aborted because GetAndValidateCurrentThreadStackBounds failed.
+  pc 0x0000560b8ff53f92 fp 0x00007ffc67d17800 /workspace/scratch/76406e3d33b6/build_tools/flutter/bin/cache/dart-sdk/bin/dart+0x3a9f92
+/workspace/scratch/76406e3d33b6/build_tools/flutter/bin/internal/shared.sh: line 23:    50 Aborted                 "$DART" pub upgrade --suppress-analytics 1>&2
+Error: Unable to 'pub upgrade' flutter tool. Retrying in five seconds... (6 tries left)
+Terminated
