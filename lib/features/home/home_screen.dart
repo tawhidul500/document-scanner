@@ -76,9 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> scan(ScanKind kind) => run(() async {
     if (kind == ScanKind.document || kind == ScanKind.idCard) {
       final cache = await getTemporaryDirectory();
-      final session = await Directory(
-        '${cache.path}/document_session_',
-      ).createTemp();
+      final session = await cache.createTemp('document_session_');
       try {
         if (!mounted) return;
         final pages = await Navigator.of(context).push<List<String>>(
@@ -193,9 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> reviewForSharing(ScanFile doc) async {
     final cache = await getTemporaryDirectory();
-    final session = await Directory(
-      '${cache.path}/document_review_',
-    ).createTemp();
+    final session = await cache.createTemp('document_review_');
     try {
       final pages = <String>[];
       final file = store.fileFor(doc);
