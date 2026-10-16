@@ -1,6 +1,7 @@
 // Translations: Bengali, Hindi, Arabic, Spanish, French, Russian, Indonesian, Portuguese.
 // English source keys are the fallback; placeholders preserve user content.
 const appCatalog = <String, List<String>>{
+  "QR and barcode scans only": ["শুধু QR ও বারকোড স্ক্যানের জন্য", "केवल QR और बारकोड स्कैन", "لمسح QR والباركود فقط", "Solo para escaneos QR y de códigos de barras", "Uniquement pour les scans QR et codes-barres", "Только для сканирования QR и штрихкодов", "Hanya untuk pemindaian QR dan kode batang", "Apenas para leituras de QR e códigos de barras"],
   "Next": ["পরবর্তী", "आगे", "التالي", "Siguiente", "Suivant", "Далее", "Berikutnya", "Próximo"],
   "Select a language to continue.": ["চালিয়ে যেতে একটি ভাষা বেছে নিন।", "जारी रखने के लिए भाषा चुनें।", "اختر لغة للمتابعة.", "Selecciona un idioma para continuar.", "Sélectionnez une langue pour continuer.", "Выберите язык, чтобы продолжить.", "Pilih bahasa untuk melanjutkan.", "Selecione um idioma para continuar."],
   "You can change this later in Settings.": ["পরে সেটিংস থেকে ভাষা পরিবর্তন করতে পারবেন।", "आप बाद में सेटिंग में इसे बदल सकते हैं।", "يمكنك تغييرها لاحقًا في الإعدادات.", "Puedes cambiarlo después en Ajustes.", "Vous pourrez la modifier dans les paramètres.", "Вы сможете изменить язык позже в настройках.", "Anda dapat mengubahnya nanti di Pengaturan.", "Você pode alterar isso depois nas Configurações."],

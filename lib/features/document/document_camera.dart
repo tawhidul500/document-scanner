@@ -3,7 +3,6 @@ import '../../widgets/scanner_camera_shell.dart';
 import '../../data/document_store.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:printing/printing.dart';
-import '../../data/app_preferences.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
@@ -323,7 +322,6 @@ class _DocumentCameraState extends State<DocumentCamera>
         } catch (_) {}
       }
       gate.captured();
-      unawaited(AppPreferences.instance.scanFeedback());
       if (!mounted) return;
       if (!batchEnabled) {
         finish();

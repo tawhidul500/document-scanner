@@ -118,11 +118,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 value: themeModeLabel(prefs.themeMode),
                 onTap: () => Navigator.push(context, MaterialPageRoute(
                   builder: (_) => ThemeScreen(onScan: widget.onScan)))),
-              _row('vibration', 'Vibration', 'Vibrate during scanning',
+              _row('vibration', 'Vibration', 'QR and barcode scans only',
                 trailing: _ReferenceSwitch(value: prefs.vibration,
                   label: context.tr('Vibration'),
                   onChanged: saving ? null : (v) => update(vibration: v))),
-              _row('beep', 'Beep', 'Sound during scanning',
+              _row('beep', 'Beep', 'QR and barcode scans only',
                 trailing: _ReferenceSwitch(value: prefs.beep,
                   label: context.tr('Beep'),
                   onChanged: saving ? null : (v) => update(beep: v))),
