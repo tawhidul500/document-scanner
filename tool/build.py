@@ -34,13 +34,21 @@ if args.target == 'apk':
     # --- R8 fix: ignore missing ML Kit non-Latin recognizer classes ---
     _app = root / 'android' / 'app'
     _app.mkdir(parents=True, exist_ok=True)
-    (_app / 'proguard-rules.pro').write_text(
+    _rules_file = _app / 'proguard-rules.pro'
+    _existing_rules = _rules_file.read_text(encoding='utf-8') if _rules_file.exists() else ''
+    _mlkit_rules = (
         '-dontwarn com.google.mlkit.vision.text.chinese.**\n'
         '-dontwarn com.google.mlkit.vision.text.devanagari.**\n'
         '-dontwarn com.google.mlkit.vision.text.japanese.**\n'
-        '-dontwarn com.google.mlkit.vision.text.korean.**\n',
-        encoding='utf-8',
+        '-dontwarn com.google.mlkit.vision.text.korean.**\n'
     )
+    _missing_rules = [rule for rule in _mlkit_rules.splitlines()
+                      if rule not in _existing_rules.splitlines()]
+    if _missing_rules:
+        _rules_file.write_text(
+            _existing_rules.rstrip() + '\n' + '\n'.join(_missing_rules) + '\n',
+            encoding='utf-8',
+        )
     for _name in ('build.gradle.kts', 'build.gradle'):
         _gradle = _app / _name
         if not _gradle.exists():

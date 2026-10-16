@@ -1,3 +1,5 @@
+import 'package:pdf_scanner/l10n/app_localizations.dart';
+import 'package:pdf_scanner/theme/app_theme.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -132,7 +134,7 @@ class _RecognizeTextScreenState extends State<RecognizeTextScreen> {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
+            content: AppText(
               'Could not save PDF. Check available storage and retry.',
             ),
           ),
@@ -146,16 +148,16 @@ class _RecognizeTextScreenState extends State<RecognizeTextScreen> {
   Widget build(BuildContext context) => PopScope(
     canPop: !saving,
     child: Scaffold(
-      backgroundColor: const Color(0xFFEBEBEB),
+      backgroundColor: AppPalette.of(context).workspace,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppPalette.of(context).surface,
         surfaceTintColor: Colors.transparent,
         centerTitle: true,
         leading: IconButton(
           onPressed: saving ? null : () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back),
         ),
-        title: const Text(
+        title: const AppText(
           'Recognize Text',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
@@ -164,19 +166,19 @@ class _RecognizeTextScreenState extends State<RecognizeTextScreen> {
             onPressed: loading || saving || text.text.trim().isEmpty
                 ? null
                 : save,
-            child: const Text('Save', style: TextStyle(fontSize: 16)),
+            child: const AppText('Save', style: TextStyle(fontSize: 16)),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF5262FF),
+              foregroundColor: AppPalette.of(context).primary,
             ),
           ),
         ],
       ),
       body: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFEBEBEB), Color(0xFFEBEBEB), Colors.white],
+            colors: [AppPalette.of(context).workspace, AppPalette.of(context).workspace, AppPalette.of(context).surface],
             stops: [0, .86, 1],
           ),
         ),
@@ -191,7 +193,7 @@ class _RecognizeTextScreenState extends State<RecognizeTextScreen> {
                     children: [
                       CircularProgressIndicator(),
                       SizedBox(height: 16),
-                      Text('Recognizing text…'),
+                      AppText('Recognizing text…'),
                     ],
                   ),
                 ),
@@ -202,10 +204,10 @@ class _RecognizeTextScreenState extends State<RecognizeTextScreen> {
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      Text(error!),
+                      AppText(error!),
                       TextButton(
                         onPressed: recognize,
-                        child: const Text('Retry'),
+                        child: const AppText('Retry'),
                       ),
                     ],
                   ),
@@ -218,17 +220,17 @@ class _RecognizeTextScreenState extends State<RecognizeTextScreen> {
                   expands: true,
                   textAlignVertical: TextAlignVertical.top,
                   textAlign: TextAlign.justify,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     height: 1.4,
-                    color: Color(0xFF303030),
+                    color: AppPalette.of(context).text,
                   ),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     contentPadding: EdgeInsets.fromLTRB(14, 26, 14, 20),
-                    hintText: 'Recognized text will appear here.',
+                    hintText: context.tr('Recognized text will appear here.'),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
@@ -270,10 +272,10 @@ class _PdfNameDialogState extends State<_PdfNameDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    backgroundColor: Colors.white,
+    backgroundColor: AppPalette.of(context).surface,
     surfaceTintColor: Colors.transparent,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    title: const Text(
+    title: const AppText(
       'PDF',
       style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
     ),
@@ -286,8 +288,8 @@ class _PdfNameDialogState extends State<_PdfNameDialog> {
         onSubmitted: (_) => submit(),
         style: const TextStyle(fontSize: 12),
         decoration: InputDecoration(
-          hintText: 'Enter File Name',
-          errorText: error,
+          hintText: context.tr('Enter File Name'),
+          errorText: context.trOrNull(error),
           errorMaxLines: 2,
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(
@@ -295,8 +297,8 @@ class _PdfNameDialogState extends State<_PdfNameDialog> {
             vertical: 12,
           ),
           border: const OutlineInputBorder(),
-          focusedBorder: const OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF5262FF), width: 2),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: AppPalette.of(context).primary, width: 2),
           ),
         ),
       ),
@@ -304,9 +306,9 @@ class _PdfNameDialogState extends State<_PdfNameDialog> {
     actions: [
       TextButton(
         onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
+        child: const AppText('Cancel'),
       ),
-      TextButton(onPressed: submit, child: const Text('Ok')),
+      TextButton(onPressed: submit, child: const AppText('Ok')),
     ],
     actionsPadding: const EdgeInsets.fromLTRB(16, 8, 12, 12),
   );

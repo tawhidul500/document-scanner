@@ -1,3 +1,4 @@
+import 'package:pdf_scanner/l10n/app_localizations.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -5,11 +6,13 @@ import 'package:flutter/services.dart';
 
 enum CameraAction { document, idCard, qr, barcode, importPdf }
 
-Future<CameraAction?> showCameraActionMenu(BuildContext context, Rect anchor) {
-  return showGeneralDialog<CameraAction>(
-    context: context,
+Future<CameraAction?> showCameraActionMenu(
+  BuildContext context,
+  Rect anchor,
+) async {
+  final route = RawDialogRoute<CameraAction>(
     barrierDismissible: true,
-    barrierLabel: 'Close scan options',
+    barrierLabel: context.tr('Close scan options'),
     barrierColor: const Color(0x700C0C0C),
     transitionDuration: const Duration(milliseconds: 180),
     pageBuilder: (context, animation, secondaryAnimation) =>
@@ -17,6 +20,10 @@ Future<CameraAction?> showCameraActionMenu(BuildContext context, Rect anchor) {
     transitionBuilder: (context, animation, secondaryAnimation, child) =>
         FadeTransition(opacity: animation, child: child),
   );
+  final action = await Navigator.of(context, rootNavigator: true).push(route);
+  // Keep the underlying camera hidden until the close button has faded out.
+  await route.completed;
+  return action;
 }
 
 class CameraActionMenu extends StatelessWidget {
@@ -30,11 +37,11 @@ class CameraActionMenu extends StatelessWidget {
     'Import PDF',
   ];
   static const colors = [
-    [Color(0xFF2F7BEA), Color(0xFF0060EB)],
-    [Color(0xFF22B35E), Color(0xFF00933D)],
-    [Color(0xFF8B4BEA), Color(0xFF5823A6)],
-    [Color(0xFFF5921E), Color(0xFFDC7906)],
-    [Color(0xFFFF383C), Color(0xFFB5171A)],
+    [Color(0xFF2361B8), Color(0xFF1251AF)],
+    [Color(0xFF14753C), Color(0xFF096330)],
+    [Color(0xFF793CCB), Color(0xFF5823A6)],
+    [Color(0xFF965000), Color(0xFF834400)],
+    [Color(0xFFC1242A), Color(0xFFA41C22)],
   ];
 
   @override
@@ -47,7 +54,7 @@ class CameraActionMenu extends StatelessWidget {
     );
     final double menuWidth = math.min<double>(
       media.size.width - 32,
-      math.max(194.0, 194.0 * math.min(textFactor, 1.6)),
+      math.max(context.englishLayout ? 194.0 : 280.0, 194.0 * math.min(textFactor, 1.6)),
     );
     final bottom = math.max(
       media.viewPadding.bottom + 16,
@@ -76,7 +83,7 @@ class CameraActionMenu extends StatelessWidget {
             scopesRoute: true,
             explicitChildNodes: true,
             namesRoute: true,
-            label: 'Scan options',
+            label: context.tr('Scan options'),
             child: Stack(
               children: [
                 Positioned(
@@ -142,9 +149,9 @@ class CameraActionMenu extends StatelessWidget {
                                           ),
                                           const SizedBox(width: 10),
                                           Expanded(
-                                            child: Text(
+                                            child: AppText(
                                               labels[action.index],
-                                              maxLines: textFactor > 1.6
+                                              maxLines: !context.englishLayout || textFactor > 1.6
                                                   ? 2
                                                   : 1,
                                               style: const TextStyle(
@@ -174,7 +181,7 @@ class CameraActionMenu extends StatelessWidget {
                               shadowColor: const Color(0x55000000),
                               child: IconButton(
                                 key: const ValueKey('camera-menu-close'),
-                                tooltip: 'Close scan options',
+                                tooltip: context.tr('Close scan options'),
                                 onPressed: () => Navigator.of(context).pop(),
                                 icon: const Icon(
                                   Icons.close_rounded,

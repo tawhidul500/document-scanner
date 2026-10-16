@@ -1,14 +1,18 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'theme/app_theme.dart';
 import 'data/document_store.dart';
 import 'data/app_preferences.dart';
 import 'features/home/home_screen.dart';
 import 'features/splash/splash_screen.dart';
+import 'features/onboarding/language_setup_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,33 +22,38 @@ Future<void> main() async {
       'Inter',
     ], await rootBundle.loadString('assets/fonts/OFL.txt'));
   });
-  try {
-    await AppPreferences.instance.load();
-  } catch (_) {
-    /* Keep defaults if preferences cannot be read. */
-  }
   runApp(const ScannerApp());
 }
 
 class ScannerApp extends StatelessWidget {
-  const ScannerApp({super.key});
+  const ScannerApp({super.key, this.preferences, this.home});
+  final AppPreferences? preferences;
+  final Widget? home;
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'Document Scanner',
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      fontFamily: 'Inter',
-      useMaterial3: true,
-      brightness: Brightness.light,
-      scaffoldBackgroundColor: Colors.white,
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1C59C1)),
-      textTheme: ThemeData.light().textTheme.apply(
-        fontFamily: 'Inter',
-        bodyColor: const Color(0xFF0F2A5C),
-        displayColor: const Color(0xFF0F2A5C),
-      ),
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: preferences ?? AppPreferences.instance,
+    builder: (context, _) => MaterialApp(
+      title: 'Document Scanner',
+      onGenerateTitle: (context) => context.tr('Document Scanner'),
+      locale: Locale((preferences ?? AppPreferences.instance).language),
+      supportedLocales: AppStrings.supportedLocales,
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      debugShowCheckedModeBanner: false,
+      theme: AppThemes.light,
+      darkTheme: AppThemes.dark,
+      themeAnimationDuration: Duration.zero,
+      builder: (context, child) {
+        final palette = AppPalette.of(context);
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: palette.systemBars.copyWith(
+            statusBarIconBrightness: palette.dark ? Brightness.light : Brightness.dark,
+            statusBarBrightness: palette.dark ? Brightness.dark : Brightness.light),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+      themeMode: (preferences ?? AppPreferences.instance).themeMode,
+      home: home ?? StartupScreen(preferences: preferences ?? AppPreferences.instance),
     ),
-    home: const StartupScreen(),
   );
 }
 
@@ -66,8 +75,9 @@ Future<DocumentStore> loadStartupDocuments(
 }
 
 class StartupScreen extends StatefulWidget {
-  const StartupScreen({super.key, this.loader = loadStartupDocuments});
+  const StartupScreen({super.key, this.loader = loadStartupDocuments, this.preferences});
   final StartupLoader loader;
+  final AppPreferences? preferences;
   @override
   State<StartupScreen> createState() => _StartupScreenState();
 }
@@ -76,6 +86,7 @@ class _StartupScreenState extends State<StartupScreen> {
   DocumentStore? store;
   Object? error;
   double? progress;
+  AppPreferences get preferences => widget.preferences ?? AppPreferences.instance;
   @override
   void initState() {
     super.initState();
@@ -89,6 +100,13 @@ class _StartupScreenState extends State<StartupScreen> {
     });
     DocumentStore? next;
     try {
+      // Keep the opening animation visible during preference and file loading.
+      try {
+        await preferences.load();
+      } catch (_) {
+        /* Keep defaults if preferences cannot be read. */
+      }
+      if (!mounted) return;
       next = await widget.loader((value) {
         if (mounted) setState(() => progress = value);
       });
@@ -119,17 +137,22 @@ class _StartupScreenState extends State<StartupScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                const AppText(
                   'Could not open your saved files. Your data has not been reset.',
                 ),
                 const SizedBox(height: 16),
-                FilledButton(onPressed: _load, child: const Text('Try again')),
+                FilledButton(onPressed: _load, child: const AppText('Try again')),
               ],
             ),
           ),
         ),
       );
     if (store == null) return SplashScreen(progress: progress);
-    return HomeScreen(store: store!);
+    return AnimatedBuilder(
+      animation: preferences,
+      builder: (_, child) => preferences.languageSetupComplete
+          ? HomeScreen(store: store!)
+          : LanguageSetupScreen(preferences: preferences),
+    );
   }
 }

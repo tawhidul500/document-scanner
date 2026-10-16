@@ -1,3 +1,5 @@
+import 'package:pdf_scanner/l10n/app_localizations.dart';
+import 'package:pdf_scanner/theme/app_theme.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -92,23 +94,23 @@ class _PageEditorState extends State<PageEditor> {
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: Scaffold(
-      backgroundColor: const Color(0xFFEBEBEB),
+      backgroundColor: AppPalette.of(context).workspace,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppPalette.of(context).surface,
         surfaceTintColor: Colors.transparent,
         centerTitle: true,
         leading: IconButton(
           onPressed: busy ? null : () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back),
         ),
-        title: Text(
+        title: AppText(
           widget.sign ? 'Sign page' : 'Crop',
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         actions: [
           if (widget.sign)
             IconButton(
-              tooltip: 'Undo stroke',
+              tooltip: context.tr('Undo stroke'),
               onPressed: busy || strokes.isEmpty
                   ? null
                   : () => setState(() => strokes.removeLast()),
@@ -116,9 +118,9 @@ class _PageEditorState extends State<PageEditor> {
             ),
           TextButton(
             onPressed: busy || bytes == null ? null : apply,
-            child: const Text(
+            child: AppText(
               'Done',
-              style: TextStyle(color: Color(0xFF5262FF), fontSize: 16),
+              style: const TextStyle(fontSize: 16),
             ),
           ),
         ],
@@ -128,7 +130,7 @@ class _PageEditorState extends State<PageEditor> {
           if (error != null || widget.sign)
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Text(
+              child: AppText(
                 error ??
                     (widget.sign
                         ? 'Draw your signature directly where you want it on the page.'

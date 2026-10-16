@@ -1,10 +1,11 @@
+import 'package:pdf_scanner/l10n/app_localizations.dart';
+import 'package:pdf_scanner/theme/app_theme.dart';
+import '../../widgets/reference_toolbar_surface.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'editor_processing.dart';
 
-const editorAccent = Color(0xFF5262FF);
-const editorBackground = Color(0xFFEBEBEB);
 
 class PageEditResult {
   const PageEditResult(this.bytes, this.paperSize);
@@ -72,9 +73,9 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: Scaffold(
-      backgroundColor: editorBackground,
+      backgroundColor: AppPalette.of(context).workspace,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppPalette.of(context).surface,
         surfaceTintColor: Colors.transparent,
         centerTitle: widget.tool != EditorTool.rotate,
         leading: IconButton(
@@ -83,8 +84,8 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
         ),
         title: Text(
           switch (widget.tool) {
-            EditorTool.filter => 'Filter',
-            EditorTool.resize => 'Resize',
+            EditorTool.filter => context.tr('Filter'),
+            EditorTool.resize => context.tr('Resize'),
             EditorTool.rotate => widget.name,
           },
           maxLines: 1,
@@ -94,9 +95,9 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
         actions: [
           TextButton(
             onPressed: busy ? null : done,
-            child: const Text(
+            child: AppText(
               'Done',
-              style: TextStyle(color: editorAccent, fontSize: 16),
+              style: const TextStyle(fontSize: 16),
             ),
           ),
         ],
@@ -105,7 +106,7 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
         children: [
           if (busy) const LinearProgressIndicator(),
           if (error != null)
-            Padding(padding: const EdgeInsets.all(8), child: Text(error!)),
+            Padding(padding: const EdgeInsets.all(8), child: AppText(error!)),
           Expanded(
             child: DocumentImagePreview(
               bytes: widget.bytes,
@@ -120,8 +121,7 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: ColoredBox(
-        color: Colors.white,
+      bottomNavigationBar: ReferenceToolbarSurface(
         child: SafeArea(
           top: false,
           child: IgnorePointer(
@@ -151,8 +151,8 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
           ),
           child: Slider(
             value: strength,
-            activeColor: editorAccent,
-            inactiveColor: const Color(0xFFEDEDED),
+            activeColor: AppPalette.of(context).primary,
+            inactiveColor: AppPalette.of(context).outline,
             label: '${(strength * 100).round()}%',
             onChanged: (value) => setState(() => strength = value),
           ),
@@ -168,7 +168,7 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
           itemBuilder: (context, i) => Semantics(
             selected: preset == i,
             button: true,
-            label: filterNames[i],
+            label: context.tr(filterNames[i]),
             child: InkWell(
               onTap: () => setState(() => preset = i),
               child: SizedBox(
@@ -180,12 +180,12 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
                       height: 58,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppPalette.of(context).surface,
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
                           color: preset == i
-                              ? editorAccent
-                              : const Color(0xFFE0E0E0),
+                              ? AppPalette.of(context).primary
+                              : AppPalette.of(context).outline,
                           width: 1.5,
                         ),
                         boxShadow: const [
@@ -204,7 +204,7 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
                       ),
                     ),
                     const SizedBox(height: 7),
-                    Text(
+                    AppText(
                       filterNames[i],
                       style: const TextStyle(fontSize: 9),
                       maxLines: 1,
@@ -229,8 +229,8 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
             onPressed: () => setState(() => paperSize = paperKeys[i]),
             style: TextButton.styleFrom(
               foregroundColor: paperSize == paperKeys[i]
-                  ? const Color(0xFF0066FF)
-                  : const Color(0xFF555555),
+                  ? AppPalette.of(context).primary
+                  : AppPalette.of(context).text,
               padding: const EdgeInsets.symmetric(horizontal: 1),
               minimumSize: const Size(0, 48),
             ),
@@ -239,7 +239,7 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
               children: [
                 const Icon(Icons.description_outlined, size: 23),
                 const SizedBox(height: 5),
-                Text(paperNames[i], style: const TextStyle(fontSize: 10)),
+                AppText(paperNames[i], style: const TextStyle(fontSize: 10)),
               ],
             ),
           ),
@@ -260,14 +260,14 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
           TextButton(
             onPressed: () => setState(() => turns = (turns + item.$3) % 4),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF555555),
+              foregroundColor: AppPalette.of(context).text,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(item.$1, size: 27),
                 const SizedBox(height: 4),
-                Text(item.$2, style: const TextStyle(fontSize: 10)),
+                AppText(item.$2, style: const TextStyle(fontSize: 10)),
               ],
             ),
           ),

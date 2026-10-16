@@ -1,3 +1,9 @@
+import '../../widgets/app_toolbar_action.dart';
+import '../../widgets/app_action_sheet.dart';
+import '../../widgets/app_action_icon.dart';
+import '../../widgets/reference_toolbar_surface.dart';
+import 'package:pdf_scanner/l10n/app_localizations.dart';
+import 'package:pdf_scanner/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
@@ -6,12 +12,12 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../data/document_store.dart';
+import '../../widgets/scan_empty_state.dart';
+import '../../widgets/file_thumbnail.dart';
+import '../../widgets/reference_navigation.dart';
+import '../settings/settings_screen.dart';
 import '../../data/document_folders.dart';
 
-const _blue = Color(0xFF205BC3);
-const _ink = Color(0xFF294779);
-const _muted = Color(0xFF8594AD);
-const _background = Color(0xFFF4F7FD);
 
 class DocumentFolderScreen extends StatefulWidget {
   const DocumentFolderScreen({
@@ -20,8 +26,10 @@ class DocumentFolderScreen extends StatefulWidget {
     required this.onOpen,
     required this.onAction,
     this.kind = ScanKind.document,
+    this.onScan,
   });
   final ScanKind kind;
+  final VoidCallback? onScan;
   final DocumentStore store;
   final Future<void> Function(ScanFile) onOpen;
   final Future<void> Function(ScanFile, String) onAction;
@@ -75,7 +83,7 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
     if (mounted)
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(value)));
+      ).showSnackBar(SnackBar(content: AppText(value)));
   }
 
   Future<void> run(Future<void> Function() action) async {
@@ -112,14 +120,14 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
       context: context,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        title: Text(title, style: const TextStyle(fontSize: 17)),
+        title: AppText(title, style: const TextStyle(fontSize: 17)),
         content: Form(
           key: key,
           child: TextFormField(
             initialValue: initial,
             autofocus: true,
-            decoration: const InputDecoration(
-              hintText: 'Enter File Name',
+            decoration: InputDecoration(
+              hintText: context.tr('Enter File Name'),
               border: OutlineInputBorder(),
             ),
             onChanged: (v) => value = v,
@@ -128,7 +136,7 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
                 DocumentStore.validateName(v ?? '');
                 return null;
               } on FormatException catch (e) {
-                return e.message.toString();
+                return context.tr(e.message.toString());
               }
             },
           ),
@@ -136,13 +144,13 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c),
-            child: const Text('Cancel'),
+            child: const AppText('Cancel'),
           ),
           TextButton(
             onPressed: () {
               if (key.currentState!.validate()) Navigator.pop(c, value.trim());
             },
-            child: const Text('Ok'),
+            child: const AppText('Ok'),
           ),
         ],
       ),
@@ -155,49 +163,34 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
   }
 
   Future<void> menu({ScanFile? file, String? folder}) async {
-    final action = await showModalBottomSheet<String>(
+    final action = await showAppActionSheet<String>(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (c) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text(
-                '${widget.kind.label} Files',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.cancel, color: _muted),
-                onPressed: () => Navigator.pop(c),
-              ),
-            ),
-            for (final a in [
-              'Rename',
-              if (folder != null) 'Delete' else 'Download',
-              if (file != null) 'Delete',
-              'Select',
-            ])
-              ListTile(
-                leading: Icon(switch (a) {
-                  'Rename' => Icons.edit_outlined,
-                  'Delete' => Icons.delete_outline,
-                  'Download' => Icons.download_outlined,
-                  _ => Icons.check_circle_outline,
-                }),
-                title: Text(a),
-                onTap: () => Navigator.pop(c, a),
-              ),
-          ],
-        ),
-      ),
+      title: Builder(builder: (titleContext) => AppText('{type} Files',
+          arguments: {'type': titleContext.tr(widget.kind.label)})),
+      actions: (sheetContext) => [
+        for (final action in [
+          if (file != null) 'Open document actions',
+          'Rename',
+          if (folder != null) 'Delete' else 'Download',
+          if (file != null) 'Print',
+          if (file != null) 'Share',
+          if (file != null) 'Delete',
+          'Select',
+        ])
+          AppMenuAction(
+            icon: switch (action) {
+              'Open document actions' => Icons.edit_document,
+              'Rename' => Icons.edit_outlined,
+              'Delete' => Icons.delete_outline,
+              'Download' => Icons.file_download_outlined,
+              'Print' => Icons.print_outlined,
+              'Share' => Icons.share_outlined,
+              _ => Icons.check_circle_outline,
+            },
+            label: action,
+            onTap: () => Navigator.pop(sheetContext, action),
+          ),
+      ],
     );
     if (action == null || !mounted) return;
     if (action == 'Select') {
@@ -236,18 +229,18 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
     final yes = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Delete Item', textAlign: TextAlign.center),
-        content: const Text(
+        title: const AppText('Delete Item', textAlign: TextAlign.center),
+        content: const AppText(
           'Are you sure you want to delete the selected items? Selected folders and their files will be deleted.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
-            child: const Text('Cancel'),
+            child: const AppText('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Ok'),
+            child: const AppText('Ok'),
           ),
         ],
       ),
@@ -264,43 +257,25 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
   }
 
   Future<void> moveSelected() async {
-    final target = await showModalBottomSheet<String>(
+    final target = await showAppActionSheet<String>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (c) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(c).height * .65,
+      title: const AppText('Move Files'),
+      maxHeightFraction: .65,
+      actions: (sheetContext) => [
+        for (final id in ['', ...folders.names.keys])
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+            leading: AppActionIcon('Move',
+                color: AppPalette.of(sheetContext).text),
+            title: Text(id.isEmpty
+                ? context.tr(widget.kind.label) : folders.names[id]!),
+            trailing: (id.isEmpty ? current == null : current == id)
+                ? Icon(Icons.check_circle,
+                    color: AppPalette.of(sheetContext).primary)
+                : null,
+            onTap: () => Navigator.pop(sheetContext, id),
           ),
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              ListTile(
-                title: const Text('Move Files', textAlign: TextAlign.center),
-                trailing: IconButton(
-                  onPressed: () => Navigator.pop(c),
-                  icon: const Icon(Icons.cancel_outlined),
-                ),
-              ),
-              for (final id in ['', ...folders.names.keys])
-                ListTile(
-                  leading: const Icon(Icons.folder, color: _blue),
-                  title: Text(
-                    id.isEmpty ? widget.kind.label : folders.names[id]!,
-                  ),
-                  trailing: (id.isEmpty ? current == null : current == id)
-                      ? const Icon(Icons.check_circle, color: _blue)
-                      : null,
-                  onTap: () => Navigator.pop(c, id),
-                ),
-            ],
-          ),
-        ),
-      ),
+      ],
     );
     if (target != null)
       await run(() async {
@@ -418,11 +393,13 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
           }
         },
         child: Scaffold(
-          backgroundColor: _blue,
+          // Keep the background behind navigation corners white.
+          backgroundColor: AppPalette.of(context).surface,
           appBar: AppBar(
-            backgroundColor: _blue,
+            backgroundColor: AppPalette.of(context).header,
             foregroundColor: Colors.white,
             elevation: 0,
+            systemOverlayStyle: AppPalette.of(context).systemBars,
             leading: IconButton(
               icon: Icon(selecting ? Icons.close : Icons.arrow_back),
               onPressed: busy
@@ -443,8 +420,8 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
             titleSpacing: 0,
             title: Text(
               selecting
-                  ? (count == 0 ? 'Select items' : '$count Selected')
-                  : folders.names[current] ?? widget.kind.label,
+                  ? context.tr(count == 0 ? 'Select items' : '{count} Selected', {'count': count})
+                  : folders.names[current] ?? context.tr(widget.kind.label),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             actions: selecting
@@ -460,7 +437,7 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
                                 selectedFolders.addAll(visibleFolders);
                               }
                             }),
-                      child: Text(
+                      child: AppText(
                         all ? 'Deselect all' : 'Select all',
                         style: const TextStyle(color: Colors.white),
                       ),
@@ -469,14 +446,14 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
                 : [
                     if (current == null)
                       IconButton(
-                        tooltip: 'New folder',
+                        tooltip: context.tr('New folder'),
                         icon: const Icon(Icons.create_new_folder_outlined),
                         onPressed: busy || loading || loadError != null
                             ? null
                             : createFolder,
                       ),
                     IconButton(
-                      tooltip: 'Search',
+                      tooltip: context.tr('Search'),
                       icon: const Icon(Icons.search),
                       onPressed: () => setState(() {
                         searching = !searching;
@@ -485,88 +462,89 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
                     ),
                   ],
           ),
-          body: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: ColoredBox(
-              color: _background,
-              child: Column(
-                children: [
-                  if (busy) const LinearProgressIndicator(),
-                  if (searching)
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: TextField(
-                        autofocus: true,
-                        onChanged: (v) => setState(() => query = v),
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          hintText: 'Search files',
+          body: ColoredBox(
+            color: AppPalette.of(context).header,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              child: ColoredBox(
+                color: AppPalette.of(context).background,
+                child: Column(
+                  children: [
+                    if (busy) const LinearProgressIndicator(),
+                    if (searching)
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: TextField(
+                          autofocus: true,
+                          onChanged: (v) => setState(() => query = v),
+                          decoration: InputDecoration(
+                            prefixIcon: Icon(Icons.search),
+                            hintText: context.tr('Search files'),
+                          ),
                         ),
                       ),
-                    ),
-                  Expanded(
-                    child: loading
-                        ? const Center(child: CircularProgressIndicator())
-                        : loadError != null
-                        ? Center(
-                            child: TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  loading = true;
-                                  loadError = null;
-                                });
-                                load();
-                              },
-                              child: Text(loadError!),
-                            ),
-                          )
-                        : visibleFiles.isEmpty && visibleFolders.isEmpty
-                        ? Center(
-                            child: Text(
-                              query.isEmpty
-                                  ? 'No ${widget.kind.label.toLowerCase()} files yet'
-                                  : 'No matching documents',
-                              style: const TextStyle(color: _muted),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(12, 14, 12, 16),
-                            itemCount:
-                                visibleFolders.length + visibleFiles.length,
-                            itemBuilder: (_, index) {
-                              if (index < visibleFolders.length) {
-                                final id = visibleFolders[index];
+                    Expanded(
+                      child: loading
+                          ? const Center(child: CircularProgressIndicator())
+                          : loadError != null
+                          ? Center(
+                              child: TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    loading = true;
+                                    loadError = null;
+                                  });
+                                  load();
+                                },
+                                child: AppText(loadError!),
+                              ),
+                            )
+                          : visibleFiles.isEmpty && visibleFolders.isEmpty
+                          ? Center(child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(24),
+                              child: ScanEmptyState(search: query.trim().isNotEmpty),
+                            ))
+                          : ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(12, 14, 12, 16),
+                              itemCount:
+                                  visibleFolders.length + visibleFiles.length,
+                              itemBuilder: (_, index) {
+                                if (index < visibleFolders.length) {
+                                  final id = visibleFolders[index];
+                                  return item(
+                                    id: id,
+                                    folder: true,
+                                    title: folders.names[id]!,
+                                    subtitle: context.tr('{count} Items', {'count': folderCounts[id] ?? 0}),
+                                  );
+                                }
+                                final file =
+                                    visibleFiles[index - visibleFolders.length];
                                 return item(
-                                  id: id,
-                                  folder: true,
-                                  title: folders.names[id]!,
-                                  subtitle: '${folderCounts[id] ?? 0} Items',
+                                  id: file.id,
+                                  folder: false,
+                                  title: file.extension == 'txt'
+                                      ? file.name
+                                      : file.filename,
+                                  subtitle:
+                                      '${file.extension == 'txt' ? '' : '${file.extension.toUpperCase()} • '}${size(file.bytes)} • ${age(file.created)}',
+                                  file: file,
                                 );
-                              }
-                              final file =
-                                  visibleFiles[index - visibleFolders.length];
-                              return item(
-                                id: file.id,
-                                folder: false,
-                                title: file.extension == 'txt'
-                                    ? file.name
-                                    : file.filename,
-                                subtitle:
-                                    '${file.extension == 'txt' ? '' : '${file.extension.toUpperCase()} • '}${size(file.bytes)} • ${age(file.created)}',
-                                file: file,
-                              );
-                            },
-                          ),
-                  ),
-                ],
+                              },
+                            ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          bottomNavigationBar: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
+          bottomNavigationBar: !selecting ? ReferenceHomeNavigation(
+            homeSelected: false,
+            onHome: () => Navigator.of(context).popUntil((route) => route.isFirst),
+            onScan: widget.onScan == null ? null : () => scanFromNavigation(context, widget.onScan),
+            onSettings: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => SettingsScreen(onScan: widget.onScan))),
+          ) : ReferenceToolbarSurface(
             child: SafeArea(
               top: false,
               child: Row(
@@ -624,17 +602,17 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
               child: Checkbox(
                 value: checked,
                 shape: const CircleBorder(),
-                activeColor: _blue,
+                activeColor: AppPalette.of(context).primary,
                 onChanged: busy ? null : (_) => toggle(id, folder),
               ),
             ),
           Expanded(
             child: Material(
-              color: checked ? const Color(0xFFE4EDFD) : _background,
+              color: checked ? AppPalette.of(context).selected : AppPalette.of(context).background,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
                 side: BorderSide(
-                  color: checked ? const Color(0xFFCADBFA) : Colors.transparent,
+                  color: checked ? AppPalette.of(context).outline : Colors.transparent,
                 ),
               ),
               child: InkWell(
@@ -656,36 +634,12 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
                         }
                       },
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(5, 8, 0, 8),
+                  padding: const EdgeInsets.fromLTRB(2.5, 7.45, 0, 7.45),
                   child: Row(
                     children: [
-                      Container(
-                        width: 44,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: folder || file?.extension == 'txt'
-                              ? Colors.white
-                              : const Color(0xFFFFF1F2),
-                          border: Border.all(
-                            color: checked ? _blue : const Color(0xFFE6EAF2),
-                          ),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Icon(
-                          folder
-                              ? Icons.folder
-                              : file?.extension == 'txt'
-                              ? Icons.description_outlined
-                              : Icons.picture_as_pdf_outlined,
-                          color: folder
-                              ? const Color(0xFF2E7BE6)
-                              : file?.extension == 'txt'
-                              ? const Color(0xFF344892)
-                              : const Color(0xFFFF5067),
-                          size: 31,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
+                      if (folder) FolderThumbnail(kind: widget.kind)
+                      else FileThumbnail(extension: file!.extension),
+                      const SizedBox(width: 13.222),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -694,30 +648,26 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
                               title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: _ink,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                              style: TextStyle(
+                                color: AppPalette.of(context).text,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text(
+                            AppText(
                               subtitle,
-                              style: const TextStyle(
-                                color: _muted,
-                                fontSize: 10,
+                              style: TextStyle(
+                                color: AppPalette.of(context).secondary,
+                                fontSize: 11,
                               ),
                             ),
                           ],
                         ),
                       ),
                       IconButton(
-                        tooltip: 'More options for $title',
-                        icon: const Icon(
-                          Icons.more_vert,
-                          color: _ink,
-                          size: 20,
-                        ),
+                        tooltip: context.tr('More options for {filename}', {'filename': title}),
+                        icon: const FileMoreIcon(),
                         onPressed: busy
                             ? null
                             : () =>
@@ -735,21 +685,11 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
   }
 
   Widget tool(String label, IconData icon, VoidCallback? action) => Expanded(
-    child: TextButton(
+    child: AppToolbarAction(
+      label: label,
+      icon: icon,
+      primary: true,
       onPressed: busy ? null : action,
-      style: TextButton.styleFrom(
-        foregroundColor: _blue,
-        disabledForegroundColor: const Color(0xFFC5CBD5),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 23),
-          const SizedBox(height: 7),
-          Text(label, style: const TextStyle(fontSize: 11)),
-        ],
-      ),
     ),
   );
   String size(int bytes) => bytes >= 1048576
@@ -758,9 +698,9 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
   String age(DateTime date) {
     final d = DateTime.now().difference(date);
     return d.inDays > 0
-        ? '${d.inDays} days ago'
+        ? context.tr(d.inDays == 1 ? '{count} day ago' : '{count} days ago', {'count': d.inDays})
         : d.inHours > 0
-        ? '${d.inHours} hours ago'
-        : 'Just now';
+        ? context.tr('{count} hr ago', {'count': d.inHours})
+        : context.tr('Just now');
   }
 }

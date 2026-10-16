@@ -25,10 +25,10 @@ void main() {
         ),
       );
       expect(
-        find.text(qr ? 'QR Code Detected' : 'Bar Code Detected'),
+        find.text(qr ? 'QR Code Detected' : 'Barcode Detected'),
         findsOneWidget,
       );
-      for (final label in ['Open', 'Copy', 'Save']) {
+      for (final label in [qr ? 'Open' : 'Search', 'Copy', 'Save']) {
         await tester.tap(find.text(label));
       }
       await tester.tap(find.byTooltip('Scan again'));

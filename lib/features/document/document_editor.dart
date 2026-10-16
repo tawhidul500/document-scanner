@@ -1,3 +1,7 @@
+import '../../widgets/app_toolbar_action.dart';
+import 'package:pdf_scanner/l10n/app_localizations.dart';
+import 'package:pdf_scanner/theme/app_theme.dart';
+import '../../widgets/reference_toolbar_surface.dart';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -116,9 +120,9 @@ class _DocumentEditorState extends State<DocumentEditor> {
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: Scaffold(
-      backgroundColor: const Color(0xFFEBEBEB),
+      backgroundColor: AppPalette.of(context).workspace,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppPalette.of(context).surface,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           onPressed: busy ? null : () => Navigator.pop(context),
@@ -138,9 +142,9 @@ class _DocumentEditorState extends State<DocumentEditor> {
                     context,
                     history.isEmpty ? null : PageEditResult(bytes!, paperSize),
                   ),
-            child: const Text(
+            child: AppText(
               'Done',
-              style: TextStyle(fontSize: 16, color: Color(0xFF4B68FF)),
+              style: const TextStyle(fontSize: 16),
             ),
           ),
         ],
@@ -149,7 +153,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
         children: [
           if (busy) const LinearProgressIndicator(),
           if (error != null)
-            Padding(padding: const EdgeInsets.all(12), child: Text(error!)),
+            Padding(padding: const EdgeInsets.all(12), child: AppText(error!)),
           Expanded(
             child: bytes == null
                 ? const SizedBox.shrink()
@@ -157,15 +161,14 @@ class _DocumentEditorState extends State<DocumentEditor> {
           ),
           Padding(
             padding: const EdgeInsets.all(14),
-            child: Text(
+            child: AppText(
               '${widget.pageNumber}/${widget.pageCount}',
-              style: const TextStyle(fontSize: 21, color: Colors.black87),
+              style: TextStyle(fontSize: 21, color: AppPalette.of(context).text),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: ColoredBox(
-        color: Colors.white,
+      bottomNavigationBar: ReferenceToolbarSurface(
         child: SafeArea(
           top: false,
           child: Padding(
@@ -210,25 +213,12 @@ class _DocumentEditorState extends State<DocumentEditor> {
     ),
   );
 
-  Widget action(IconData icon, String label, VoidCallback? callback) =>
-      Expanded(
-        child: TextButton(
-          onPressed: busy || bytes == null ? null : callback,
-          style: TextButton.styleFrom(
-            foregroundColor: selected == label
-                ? editorAccent
-                : const Color(0xFF303030),
-            minimumSize: const Size(0, 52),
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 23),
-              const SizedBox(height: 5),
-              Text(label, style: const TextStyle(fontSize: 10)),
-            ],
-          ),
-        ),
-      );
+  Widget action(IconData icon, String label, VoidCallback? callback) => Expanded(
+    child: AppToolbarAction(
+      label: label,
+      icon: icon,
+      selected: selected == label,
+      onPressed: busy || bytes == null ? null : callback,
+    ),
+  );
 }

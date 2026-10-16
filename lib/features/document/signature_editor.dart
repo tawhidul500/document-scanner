@@ -1,3 +1,7 @@
+import '../../widgets/app_toolbar_action.dart';
+import 'package:pdf_scanner/l10n/app_localizations.dart';
+import 'package:pdf_scanner/theme/app_theme.dart';
+import '../../widgets/reference_toolbar_surface.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -7,7 +11,6 @@ import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-const signatureAccent = Color(0xFF5262FF);
 const signatureColors = <Color>[
   Colors.black,
   Colors.white,
@@ -83,8 +86,7 @@ class SignatureStyleBar extends StatelessWidget {
   final bool gallery;
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: Colors.white,
+  Widget build(BuildContext context) => ReferenceToolbarSurface(
     child: SafeArea(
       top: false,
       child: Padding(
@@ -103,7 +105,7 @@ class SignatureStyleBar extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: color,
                       border: Border.all(
-                        color: const Color(0xFFCCCCCC),
+                        color: AppPalette.of(context).secondary,
                         width: 2,
                       ),
                     ),
@@ -114,15 +116,15 @@ class SignatureStyleBar extends StatelessWidget {
                       value: weight,
                       min: 1,
                       max: 70,
-                      activeColor: signatureAccent,
-                      inactiveColor: const Color(0xFFEDEDED),
+                      activeColor: AppPalette.of(context).primary,
+                      inactiveColor: AppPalette.of(context).outline,
                       label: gallery
-                          ? '${(weight / 70 * 100).round()}% opacity'
+                          ? context.tr('{percent}% opacity', {'percent': (weight / 70 * 100).round()})
                           : '${weight.round()}',
                       onChanged: onWeight,
                     ),
                   ),
-                  Text(
+                  AppText(
                     gallery
                         ? '${(weight / 70 * 100).round()}%'
                         : '${weight.round()}',
@@ -142,7 +144,7 @@ class SignatureStyleBar extends StatelessWidget {
                 itemBuilder: (context, i) => Semantics(
                   button: true,
                   selected: signatureColors[i] == color,
-                  label: 'Signature color ${i + 1}',
+                  label: context.tr('Signature color {number}', {'number': i + 1}),
                   child: InkWell(
                     onTap: () => onColor(signatureColors[i]),
                     borderRadius: BorderRadius.circular(22),
@@ -155,7 +157,7 @@ class SignatureStyleBar extends StatelessWidget {
                         border: Border.all(
                           width: 2,
                           color: signatureColors[i] == color
-                              ? signatureAccent
+                              ? AppPalette.of(context).primary
                               : Colors.transparent,
                         ),
                       ),
@@ -163,7 +165,7 @@ class SignatureStyleBar extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: signatureColors[i],
-                          border: Border.all(color: const Color(0xFFE4E4E4)),
+                          border: Border.all(color: AppPalette.of(context).controlOutline),
                         ),
                       ),
                     ),
@@ -191,20 +193,20 @@ class _SignatureDrawScreenState extends State<SignatureDrawScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFFEBEBEB),
+    backgroundColor: AppPalette.of(context).workspace,
     appBar: AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: AppPalette.of(context).surface,
       surfaceTintColor: Colors.transparent,
       actions: [
         IconButton(
-          tooltip: 'Undo stroke',
+          tooltip: context.tr('Undo stroke'),
           onPressed: strokes.isEmpty
               ? null
               : () => setState(() => redo.add(strokes.removeLast())),
           icon: const Icon(Icons.undo),
         ),
         IconButton(
-          tooltip: 'Redo stroke',
+          tooltip: context.tr('Redo stroke'),
           onPressed: redo.isEmpty
               ? null
               : () => setState(() => strokes.add(redo.removeLast())),
@@ -212,7 +214,7 @@ class _SignatureDrawScreenState extends State<SignatureDrawScreen> {
         ),
         const SizedBox(width: 22),
         IconButton(
-          tooltip: 'Use signature',
+          tooltip: context.tr('Use signature'),
           onPressed: strokes.isEmpty
               ? null
               : () => Navigator.pop(
@@ -223,7 +225,10 @@ class _SignatureDrawScreenState extends State<SignatureDrawScreen> {
                     weight,
                   ),
                 ),
-          icon: const Icon(Icons.check, color: signatureAccent),
+          style: IconButton.styleFrom(
+            foregroundColor: AppPalette.of(context).primary,
+            disabledForegroundColor: AppPalette.of(context).disabled),
+          icon: const Icon(Icons.check),
         ),
         const SizedBox(width: 12),
       ],
@@ -234,7 +239,7 @@ class _SignatureDrawScreenState extends State<SignatureDrawScreen> {
           p.dx.clamp(0.0, box.maxWidth).toDouble(),
           p.dy.clamp(0.0, box.maxHeight).toDouble(),
         );
-        return GestureDetector(
+        return ColoredBox(color: const Color(0xFFEBEBEB), child: GestureDetector(
           key: const ValueKey('signature-canvas'),
           behavior: HitTestBehavior.opaque,
           // Begin the stroke where the finger lands, not after the pan slop.
@@ -257,15 +262,15 @@ class _SignatureDrawScreenState extends State<SignatureDrawScreen> {
               if (strokes.isEmpty)
                 const Align(
                   alignment: Alignment(0, -.3),
-                  child: Text(
+                  child: AppText(
                     'Sign here',
-                    style: TextStyle(fontSize: 18, color: Color(0xFFC0C0C0)),
+                    style: TextStyle(fontSize: 18, color: Color(0xFF566781)),
                   ),
                 ),
               CustomPaint(painter: _InkPainter(strokes, color, weight)),
             ],
           ),
-        );
+        ));
       },
     ),
     bottomNavigationBar: SignatureStyleBar(
@@ -505,25 +510,25 @@ class _SignatureEditorState extends State<SignatureEditor> {
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: Scaffold(
-      backgroundColor: hasSignature ? Colors.white : const Color(0xFFEBEBEB),
+      backgroundColor: AppPalette.of(context).workspace,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppPalette.of(context).surface,
         surfaceTintColor: Colors.transparent,
         centerTitle: true,
         leading: IconButton(
           onPressed: busy ? null : () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back),
         ),
-        title: const Text(
+        title: const AppText(
           'Add Signature',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         actions: [
           TextButton(
             onPressed: busy || page == null ? null : done,
-            child: const Text(
+            child: AppText(
               'Done',
-              style: TextStyle(fontSize: 16, color: signatureAccent),
+              style: const TextStyle(fontSize: 16),
             ),
           ),
         ],
@@ -532,7 +537,7 @@ class _SignatureEditorState extends State<SignatureEditor> {
         children: [
           if (busy) const LinearProgressIndicator(),
           if (error != null)
-            Padding(padding: const EdgeInsets.all(12), child: Text(error!)),
+            Padding(padding: const EdgeInsets.all(12), child: AppText(error!)),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(28, 35, 28, 16),
@@ -607,7 +612,7 @@ class _SignatureEditorState extends State<SignatureEditor> {
                                         child: Container(
                                           decoration: BoxDecoration(
                                             border: Border.all(
-                                              color: signatureAccent,
+                                              color: AppPalette.of(context).primary,
                                             ),
                                           ),
                                           child: Stack(
@@ -715,8 +720,7 @@ class _SignatureEditorState extends State<SignatureEditor> {
                     );
                 }),
               )
-            : ColoredBox(
-                color: Colors.white,
+            : ReferenceToolbarSurface(
                 child: SafeArea(
                   top: false,
                   child: Padding(
@@ -728,13 +732,13 @@ class _SignatureEditorState extends State<SignatureEditor> {
                           Icons.draw_outlined,
                           'Sign',
                           draw,
-                          signatureAccent,
+                          AppPalette.of(context).primary,
                         ),
                         action(
                           Icons.image_outlined,
                           'Gallery',
                           importSignature,
-                          Colors.black,
+                          AppPalette.of(context).text,
                         ),
                       ],
                     ),
@@ -749,11 +753,15 @@ class _SignatureEditorState extends State<SignatureEditor> {
     width: 24,
     height: 24,
     child: IconButton(
-      tooltip: label,
+      tooltip: context.tr(label),
       padding: EdgeInsets.zero,
       onPressed: busy ? null : action,
-      style: IconButton.styleFrom(backgroundColor: const Color(0xFF9B9B9B)),
-      icon: Icon(icon, size: 13, color: Colors.white),
+      style: IconButton.styleFrom(
+        backgroundColor: AppPalette.of(context).primary,
+        foregroundColor: AppPalette.of(context).onPrimary,
+        disabledBackgroundColor: AppPalette.of(context).selected,
+        disabledForegroundColor: AppPalette.of(context).disabled),
+      icon: Icon(icon, size: 13),
     ),
   );
 
@@ -762,16 +770,12 @@ class _SignatureEditorState extends State<SignatureEditor> {
     String label,
     VoidCallback callback,
     Color color,
-  ) => TextButton(
-    onPressed: busy || page == null ? null : callback,
-    style: TextButton.styleFrom(foregroundColor: color),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 24),
-        const SizedBox(height: 5),
-        Text(label, style: const TextStyle(fontSize: 10)),
-      ],
+  ) => Expanded(
+    child: AppToolbarAction(
+      label: label,
+      icon: icon,
+      selected: color == AppPalette.of(context).primary,
+      onPressed: busy || page == null ? null : callback,
     ),
   );
 }

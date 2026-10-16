@@ -1,136 +1,85 @@
-# Build status and quick start
+# Document Scanner
 
-This source package has been hardened for building, but **no APK or IPA was
-produced in the editing environment**. See `BUILD_REPORT.md` for verified checks
-and remaining build gates. Minimum Flutter is 3.44 / Dart 3.12; the included CI
-workflow pins Flutter 3.47.7.
+Flutter document, ID card, QR code, and barcode scanner. Current update: **0.5.0+6**.
 
-From the extracted `pdf_scanner` directory, with Flutter and platform SDKs installed:
+## Build the Android APK on GitHub
 
-```sh
-python3 tool/build.py apk   # Android release-mode APK with generated development signing
-python3 tool/build.py ios   # macOS only: unsigned .app ZIP, not installable
-python3 tool/build.py ipa   # macOS only: requires Apple signing configured in Xcode
-```
+1. Open [Verify and build mobile apps](https://github.com/tawhidul500/document-scanner/actions/workflows/build.yml).
+2. Click **Run workflow**, choose **main**, and leave **target = android**.
+3. Click **Run workflow** and wait for the Android job to finish.
+4. Open the completed run and download **android-development-signed-apk** from Artifacts.
+5. Extract the download and install `document-scanner-android-test.apk` on your Android device.
+   `SHA256SUMS.txt` contains the APK checksum.
 
-The scripts generate missing native runners, apply platform configuration, resolve
-packages, run analysis/tests and build only if those checks pass. Generated
-`pubspec.lock` should be retained and committed after the first successful package
-resolution. Existing native runners and app source are preserved.
+The workflow is manual; pushing this update does not start an APK build. Choose
+`ios` or `both` only when those outputs are needed. The iOS artifact is an unsigned
+app ZIP and is not installable on a device.
 
-To run on GitHub, put this folder's contents at a repository root and manually run
-**Verify and build mobile apps** in Actions. No repository or remote build was
-created/executed as part of this delivery. Android output is development-signed;
-iOS workflow output is unsigned. Configure production bundle IDs and signing
-before store distribution.
+The build uses the repository's existing Flutter 3.47.7 pin and Java 17. It generates
+missing native runners, configures Android/iOS requirements, resolves dependencies,
+regenerates the native splash, runs `flutter analyze` and the complete Flutter test
+suite, then builds. The Android job also runs the localization and palette contrast
+checks. A failing check stops the build; no placeholder APK is uploaded.
 
----
+Android builds currently use Flutter's generated development signing and the existing
+`com.example` organization setting. Production distribution requires a stable application
+ID and release signing. Installing over an earlier APK requires the same application ID
+and signing key; an APK from a fresh CI runner may have a different development key.
 
-# Version 0.4.0 — document camera and review
+## Included in this update
 
-Both Home > Document and Camera menu > Documents now open the same custom camera directly.
+- First launch: select a language, then tap Next to save it and open Home. Later launches
+  use the saved choice. Existing valid language preferences are retained.
+- App text in nine languages, including Arabic right-to-left layout.
+- Light, dark, and system appearance, using the supplied design artwork.
+- New supplied opening animation and removal of the previous splash artwork.
+- Shared file actions for Recent and folders: document actions, preview, print, share,
+  and export. Document tools include Edit, Sign, OCR, Share, and Export.
+- Imported PDFs open in document review; existing PDFs can be reopened for editing.
+- Recent > See all supports the same selection controls as folders.
+- QR/barcode result redesign, scan beep and vibration, document/ID camera improvements,
+  and corrected menu close buttons and navigation corners.
+- About no longer displays the open-source licenses section; bundled font license files remain.
 
-- Dark camera UI based on `design/document_scanner_reference.svg`; live rear-camera preview, flash, photo import, blue detected-edge polygon, manual shutter and Auto capture switch.
-- Single mode opens the review screen after one capture. Batch mode collects pages until Done (up to 50 pages per document).
-- Auto capture requires a supported, stable four-corner contour for 1.2 seconds. After a capture, remove the page from view for at least three analyzed frames before presenting the next. The manual shutter remains available.
-- Detection uses a downsampled grayscale edge map, contour connectivity, convexity/area checks and support along each side. It is a conservative heuristic, not a trained document detector. Use contrasting backgrounds and good lighting; manual capture and corner adjustment are available when detection fails.
-- Captured images are oriented, capped at 2400 pixels on the longest edge, detected again at capture resolution and rectified. If no contour is found, the whole image is retained.
-- Review follows `design/document_review_reference.svg`: document name, Option menu, real page image, swipe/zoom, page counter and Share / Edit / Convert / Sign controls.
-- Scans save to a PDF before review opens. Edit opens Crop / Filters / Size / Rotate / Undo. Option opens the Document Files bottom sheet. Convert recognizes text on the current page and opens Recognize Text; Save asks for a filename and creates a separate text PDF in Documents. Sign opens Add Signature: draw with undo/redo or import from Gallery, then place, resize, rotate, recolor, and apply the signature to the current page.
-- Review edits update the saved PDF. Failed edits remain in the session for retry. Temporary page images are removed after leaving the review; reopening a saved PDF uses the existing PDF preview rather than reconstructing editable pages.
-- No fake document or sample letter is inserted. OS status/navigation bars remain real.
-- Camera and processing resources are released on close; camera initialization is serialized across lifecycle changes. Audio is disabled.
+See the feature-specific `*_UPDATE.md` files, `FIRST_LAUNCH_LANGUAGE.md`,
+`SCAN_FEEDBACK_FIX.md`, `SCAN_RESULT_REDESIGN.md`, and `SPLASH_REPLACEMENT.md` for details.
 
-## Setup and verification
+## Local build
 
-New direct dependencies: camera 0.12.1, image_picker 1.2.4, image 4.12.0 and pdf 3.13.1. Native runners are still generated by `python3 tool/setup.py`. Existing iOS runners also need `NSPhotoLibraryUsageDescription` for gallery import. See PLATFORM_SETUP.md.
-
-Run `flutter pub get`, `flutter analyze`, `flutter test`, and then test a physical Android and iOS device. Dart syntax parsing and standalone image/detection/PDF analysis and executable checks passed locally; Flutter SDK/build/device tests were not available. Re-run the processing checks with `dart run tool/check_document_processing.dart` after Flutter dependency resolution. In particular, verify camera-plane rotation, preview/edge alignment, autofocus, auto capture, permission retry, gallery background/resume and low-memory behavior. No production accuracy or on-device success is claimed.
-
-Primary API references used: https://pub.dev/packages/camera and https://pub.dev/documentation/image/latest/image/copyRectify.html
-
-## Previous version notes
-
-# Version 0.3.1 — animated splash and startup progress
-
-- Supplied six-second Lottie design replaces the static Flutter splash.
-- Original JSON is retained in `design/splash_screen_final.json`.
-- Runtime JSON removes only the timed Loader layer; Flutter draws the same bar at its original coordinates.
-- Directory discovery uses an indeterminate loader. Record processing advances the bar by completed records, including corrupt records; final sorting/commit is the last work unit. This is work progress, not an estimated time remaining.
-- Home opens immediately when initialization succeeds. No minimum splash duration and no six-second wait; on fast starts the animation may appear only briefly.
-- Animation loops during slow loading; errors retain the retry flow. Artwork failure has a text fallback and does not block initialization.
-- Lottie 3.6.1 added. API reference: https://pub.dev/packages/lottie
-- Native launch screen remains static (OS requirement), with a matching blue background. Regenerate native splash resources after updating.
-- Run `flutter pub get`, `dart run flutter_native_splash:create`, `flutter analyze`, and `flutter test` on a configured Flutter installation. If native folders are absent, use `python3 tool/setup.py`.
-
-# Document Scanner — splash, home and camera action menu
-
-Flutter mobile app source for Android and iOS, extended from the supplied Splash Screen.svg, Home_page.svg and Home_ Camera_page.svg.
-
-## Included behavior
-
-- Splash transitions to Home when app-owned local records load; retry screen on storage initialization failure.
-- Document and ID Card: native camera/gallery scanning, cropping, PDF output, durable local copy, PDF preview and printing.
-- QR Code and Barcode: camera detection, result confirmation, UTF-8 TXT saving and copyable preview.
-- My Documents: live category counts and filtered folders.
-- Recent Files / See all: saved files sorted newest first; no fabricated sample scans.
-- Search by file name, case-insensitive.
-- Three-dot menu: rename with validation, Download through system file picker, Share through native sheet, Delete with confirmation.
-- Camera button: dimmed Home overlay with five gradient pill actions and an X button, matching the new SVG. Outside tap, system Back and Escape dismiss the menu. Home button: scroll to top.
-- Import PDF: system document picker restricted to PDFs, header check, app-owned copy, original base filename and category counts. The picked source file is not moved or deleted. Imported files support preview, rename, export, share and delete.
-- Settings: local storage totals, privacy/storage guidance, export guidance, app information and licenses.
-
-## Run
-
-See PLATFORM_SETUP.md for platform prerequisites and physical-device acceptance checks. When native folders are absent:
+Install Flutter 3.47.7 and the platform SDK, then run from the repository root:
 
 ```sh
-python3 tool/setup.py
-flutter run
+python3 -m unittest discover -s tool -p 'test_*.py' -v
+python3 tool/build.py apk
 ```
 
-When native folders are present:
+Output: `dist/document-scanner-android-test.apk`.
+
+Other targets:
 
 ```sh
-flutter pub get
-dart run flutter_native_splash:create
-flutter analyze
-flutter test
-flutter run
+python3 tool/build.py check
+python3 tool/build.py ios   # macOS + Xcode; unsigned app ZIP
+python3 tool/build.py ipa   # macOS + Xcode; Apple signing must be configured
 ```
 
-An iOS binary requires macOS/Xcode and signing. Native camera flows require physical-device validation.
+Missing native runners are generated in a temporary folder before copying them into
+the project. Existing app source and native runners are preserved. ML Kit non-Latin
+R8 warning rules are added without discarding existing ProGuard rules. See
+`PLATFORM_SETUP.md` for device permissions and platform requirements.
 
-## Design choices
+`pubspec.lock` is not yet committed. The Android workflow uploads the resolved file as
+**android-resolved-lockfile**. Retain and commit it after a successful build to lock
+transitive dependency versions.
 
-- Original SVGs are retained under design/. 1x and 4x artwork is extracted from their vector paths, including the logo, scan icons, folders and header lettering.
-- White/blue home layout, rounded sections, pastel tiles and floating camera follow the supplied 375 x 813 reference.
-- The popup shown in the SVG appears only after the corresponding three-dot button is tapped.
-- Folder counts, sizes, names, times and recent rows reflect actual saved files. Fresh installs have an empty state.
-- Dynamic text uses bundled Inter with its open font license. This is a close visual choice, not a verified font identification: the SVG contains outlines rather than font metadata. Exact typography verification needs the original font or Figma text properties.
-- Device status indicators are real OS UI. The design's fixed 9:41, signal and battery drawings are not overlaid on the application.
-- Other phone sizes adapt to width, scroll, and safe insets. The Flutter splash preserves the original footer spelling, “SCAN FASTER WORK SMATER.”
-- Native Android 12+ launch screens use the OS icon layout; arbitrary Figma launch placement is not supported there.
+## Verification status
 
-## Packages
+Preparation checks cover Dart syntax, local import/asset paths, translation coverage,
+color contrast, Python syntax, workflow structure, and patch application against the
+repository baseline. These checks do not compile Flutter or test camera hardware.
+Flutter analysis, widget tests, and APK compilation must pass in GitHub Actions.
+Test camera capture, beep/vibration, import/export, printing, and signing on a physical
+Android device after downloading the APK.
 
-| Package | Purpose |
-| --- | --- |
-| cunning_document_scanner 3.0.3 | Android/iOS document scanning, gallery crop, PDF generation |
-| mobile_scanner 7.4.2 | QR/barcode detection |
-| printing 5.15.1 | PDF preview and print/share controls |
-| path_provider | App-owned persistent files |
-| share_plus 13.3.1 + cross_file | Native file sharing |
-| flutter_file_dialog 3.3.3 | User-selected export destination |
-| flutter_native_splash 2.4.8 | Native launch artwork |
-
-Package API references checked at pub.dev. See VALIDATION.md for the actual checks performed; code implementation is not a claim of on-device verification.
-
-## Camera menu reference geometry
-
-On the 375 × 813 canvas: action width 194, height 53, vertical gap 10, left 91, first top 405. Close button is 54 × 54, centered at (188, 746). Overlay color is #0C0C0C at approximately 44% opacity. Placement follows the actual camera button on other devices; large text increases button sizes and the menu scrolls when necessary.
-
-
-### ID card capture
-
-Both Home > ID Card and the camera popup > ID Card open the custom ID camera. Select One Side or Both Sides, capture/import front then back, and tap the thumbnail arrow to preview. The camera includes Auto/Manual, flash, a card guide and capture count. Both Sides requires both captures before preview. New ID PDFs place the sides together on one page; ID Card Image Preview also supports reopening older multi-page ID PDFs. Option provides rename and PDF download/export.
+See `GITHUB_UPDATE.md` for the exact push procedure and `BUILD_REPORT.md` for earlier
+build-environment notes.

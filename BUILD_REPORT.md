@@ -1,3 +1,24 @@
+# Repository preparation — 2026-10-16
+
+The cumulative source update is version 0.5.0+6, based on repository main
+`50d1d21bfbba110b6d987fe1493b4c1049a46aa3`. The existing build fixes are retained.
+The manual workflow defaults to Android and retains optional iOS builds. It adds
+localization/contrast checks and includes an APK SHA-256 checksum in the artifact.
+See `GITHUB_UPDATE.md` for push and build instructions.
+
+Flutter is not installed in this session. No Flutter analysis, widget tests, native
+build, APK, or device verification has been completed here. The workflow retains
+analysis and the complete Flutter test suite as mandatory build gates.
+
+Local preparation checks passed: 79 Dart files parsed, local imports and declared
+assets resolved, seven Python checks passed (localization, contrast, native setup),
+and workflow/Python syntax checks passed. These are source checks, not a Flutter build.
+
+The earlier report below describes the original build preparation; later feature
+notes and the current README supersede older feature descriptions.
+
+---
+
 # Build and optimization report — 2026-10-15
 
 ## Result

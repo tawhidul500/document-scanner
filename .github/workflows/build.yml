@@ -2,12 +2,23 @@ name: Verify and build mobile apps
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Platform to build
+        type: choice
+        required: true
+        default: android
+        options:
+          - android
+          - ios
+          - both
 
 permissions:
   contents: read
 
 jobs:
   android:
+    if: inputs.target == 'android' || inputs.target == 'both'
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -29,12 +40,21 @@ jobs:
           channel: stable
           cache: true
 
-      - run: python3 tool/build.py apk
+      - name: Check localization and color contrast
+        run: python3 -m unittest discover -s tool -p 'test_*.py' -v
+
+      - name: Analyze, test, and build Android APK
+        run: python3 tool/build.py apk
+
+      - name: Record APK checksum
+        run: sha256sum dist/document-scanner-android-test.apk > dist/SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
         with:
           name: android-development-signed-apk
-          path: dist/*.apk
+          path: |
+            dist/*.apk
+            dist/SHA256SUMS.txt
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
@@ -44,6 +64,7 @@ jobs:
           path: pubspec.lock
 
   ios:
+    if: inputs.target == 'ios' || inputs.target == 'both'
     runs-on: macos-latest
     timeout-minutes: 45
 

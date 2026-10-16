@@ -1,16 +1,14 @@
+# A plain native launch frame hands off to the supplied Flutter Lottie animation.
+# Android 12 needs an explicit transparent image to suppress the old launch logo.
 flutter_native_splash:
   color: '#2468DC'
   color_dark: '#2468DC'
-  image: assets/splash/4.0x/logo.png
-  image_dark: assets/splash/4.0x/logo.png
   android: true
   ios: true
   web: false
   fullscreen: true
-  android_gravity: center
-  ios_content_mode: center
   android_12:
     color: '#2468DC'
     color_dark: '#2468DC'
-    image: assets/splash/android12_logo.png
-    image_dark: assets/splash/android12_logo.png
+    image: assets/splash/launch_transparent.png
+    image_dark: assets/splash/launch_transparent.png

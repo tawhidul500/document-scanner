@@ -1,3 +1,7 @@
+import 'package:pdf_scanner/l10n/app_localizations.dart';
+import '../../widgets/scanner_camera_shell.dart';
+import '../../data/document_store.dart';
+import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import '../../data/app_preferences.dart';
@@ -7,9 +11,14 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'code_scan_geometry.dart';
+import 'code_result_actions.dart';
+import 'code_result_screen.dart';
+export 'code_result_screen.dart' show CodeResultCard, CodeResultScreen;
 
 class CodeScanner extends StatefulWidget {
-  const CodeScanner({super.key, required this.qrOnly});
+  const CodeScanner({super.key, required this.qrOnly, this.onModeChanged});
+  final ValueChanged<ScanKind>? onModeChanged;
   final bool qrOnly;
 
   @override
@@ -42,7 +51,13 @@ class _CodeScannerState extends State<CodeScanner>
     vsync: this,
     duration: const Duration(milliseconds: 1800),
   )..repeat(reverse: true);
-  String? result;
+  String? result, pendingCode;
+  BarcodeFormat? resultFormat, pendingFormat;
+  bool savingResult = false;
+  DateTime? pendingAt;
+  bool automatic = true;
+  bool released = false;
+  bool changingMode = false;
   String? error;
   bool importing = false;
   bool disposed = false;
@@ -53,13 +68,14 @@ class _CodeScannerState extends State<CodeScanner>
   @override
   void initState() {
     super.initState();
+    unawaited(AppPreferences.instance.prepareScanFeedback());
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => start());
   }
 
   Future<void> start() {
     cameraTask = cameraTask.then((_) async {
-      if (disposed || !mounted || !active || result != null || importing)
+      if (disposed || released || changingMode || !mounted || !active || result != null || importing)
         return;
       try {
         if (!controller.value.isRunning) await controller.start();
@@ -77,7 +93,7 @@ class _CodeScannerState extends State<CodeScanner>
 
   Future<void> stop() {
     cameraTask = cameraTask.then((_) async {
-      if (disposed) return;
+      if (disposed || released) return;
       try {
         await controller.stop();
       } catch (_) {
@@ -97,29 +113,45 @@ class _CodeScannerState extends State<CodeScanner>
     }
   }
 
-  void detect(BarcodeCapture capture) {
-    if (!mounted || result != null) return;
+  void detect(BarcodeCapture capture, {bool force = false}) {
+    if (!mounted || changingMode || result != null) return;
     for (final code in capture.barcodes) {
       final value = code.rawValue;
       if (value == null || value.isEmpty) continue;
       if (widget.qrOnly != (code.format == BarcodeFormat.qrCode)) continue;
-      setState(() => result = value);
-      unawaited(AppPreferences.instance.scanFeedback());
-      sweep.stop();
-      unawaited(stop());
+      if (!automatic && !force) {
+        pendingCode = value;
+        pendingFormat = code.format;
+        pendingAt = DateTime.now();
+        return;
+      }
+      acceptResult(value, code.format);
       return;
     }
   }
 
+  void acceptResult(String value, BarcodeFormat? format) {
+    // Automatic detection, imported images and manual capture share one guard.
+    if (!mounted || disposed || released || changingMode || result != null) return;
+    setState(() { result = value; resultFormat = format; });
+    sweep.stop();
+    unawaited(AppPreferences.instance.scanFeedback());
+    unawaited(stop());
+  }
+
   void rescan() {
-    setState(() => result = null);
+    if (savingResult) return;
+    setState(() {
+      result = null; resultFormat = null;
+      pendingCode = null; pendingFormat = null; pendingAt = null;
+    });
     sweep.repeat(reverse: true);
     unawaited(start());
   }
 
   void message(String text) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: AppText(text)));
   }
 
   Future<void> gallery() async {
@@ -132,7 +164,7 @@ class _CodeScannerState extends State<CodeScanner>
       if (image != null) {
         final capture = await controller.analyzeImage(image.path);
         if (!mounted) return;
-        if (capture != null) detect(capture);
+        if (capture != null) detect(capture, force: true);
         if (result == null)
           message(
             widget.qrOnly
@@ -153,20 +185,53 @@ class _CodeScannerState extends State<CodeScanner>
   Future<void> openResult() async {
     final value = result;
     if (value == null) return;
-    final uri = Uri.tryParse(value.trim());
-    // Only open web links. Other payloads remain readable and copyable.
-    if (uri == null ||
-        !['http', 'https'].contains(uri.scheme) ||
-        uri.host.isEmpty) {
+    final uri = codeResultUri(qrOnly: widget.qrOnly, value: value);
+    if (uri == null) {
       message('This code contains text, not a web link. Use Copy or Save.');
       return;
     }
     try {
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        message('Could not open this link. You can copy it instead.');
+        message('Could not open the browser. You can copy the result instead.');
       }
     } catch (_) {
-      message('Could not open this link. You can copy it instead.');
+      message('Could not open the browser. You can copy the result instead.');
+    }
+  }
+
+  Future<void> copyResult() async {
+    final value = result;
+    if (value == null) return;
+    try {
+      await Clipboard.setData(ClipboardData(text: value));
+      message('Copied to clipboard');
+    } catch (_) {
+      message('Could not copy this result. Please try again.');
+    }
+  }
+
+  void saveResult() {
+    final value = result;
+    if (value == null || savingResult) return;
+    // Allow this intentional route pop without rebuilding/restarting the camera.
+    setState(() => savingResult = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop(value);
+    });
+  }
+
+  Future<void> openPromotion() async {
+    final uri = generatorAppUri(qrGeneratorAppUrl);
+    if (uri == null) {
+      message('This app link is not available in this version yet.');
+      return;
+    }
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        message('Could not open the app page. Please try again.');
+      }
+    } catch (_) {
+      message('Could not open the app page. Please try again.');
     }
   }
 
@@ -184,331 +249,92 @@ class _CodeScannerState extends State<CodeScanner>
     WidgetsBinding.instance.removeObserver(this);
     sweep.dispose();
     disposed = true;
-    unawaited(cameraTask.then((_) => controller.dispose()));
+    if (!released) unawaited(cameraTask.then((_) => controller.dispose()));
     super.dispose();
   }
 
+  Future<void> changeMode(ScanKind kind) async {
+    if (importing || changingMode || widget.onModeChanged == null ||
+        kind == (widget.qrOnly ? ScanKind.qr : ScanKind.barcode)) return;
+    setState(() => changingMode = true);
+    await stop();
+    await controller.dispose();
+    released = true;
+    if (mounted) widget.onModeChanged!(kind);
+  }
+
+  Future<void> importFiles() async {
+    if (importing || changingMode) return;
+    setState(() => importing = true);
+    await stop();
+    try {
+      final path = await FlutterFileDialog.pickFile(params: const OpenFileDialogParams(
+        dialogType: OpenFileDialogType.document,
+        fileExtensionsFilter: ['jpg','jpeg','png'],
+        mimeTypesFilter: ['image/jpeg','image/png'], copyFileToCacheDir: true));
+      if (path != null) {
+        final capture = await controller.analyzeImage(path);
+        if (!mounted) return;
+        if (capture != null) detect(capture, force: true);
+        if (result == null) message('No matching code found in that image.');
+      }
+    } catch (_) { message('Could not read that image file.'); }
+    finally {
+      if (mounted) {
+        setState(() => importing = false);
+        if (result == null) await start();
+      }
+    }
+  }
+
+  void readCode() {
+    if (pendingCode == null || pendingAt == null ||
+        DateTime.now().difference(pendingAt!).inMilliseconds > 800) {
+      message('Keep the code inside the guide until it is readable.'); return;
+    }
+    acceptResult(pendingCode!, pendingFormat);
+  }
+
   @override
-  Widget build(BuildContext context) => PopScope<String>(
-    canPop: result == null,
-    onPopInvokedWithResult: (didPop, value) {
-      if (!didPop && result != null) rescan();
-    },
-    child: Scaffold(
-      backgroundColor: const Color(0xFF202020),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final size = constraints.biggest;
-          final width = math.min(
-            size.width - 80,
-            widget.qrOnly ? 238.0 : 281.0,
-          );
-          final frame = Rect.fromCenter(
-            center: Offset(size.width / 2, size.height / 2),
-            width: width,
-            height: widget.qrOnly ? width * 1.09 : width * .64,
-          );
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              MobileScanner(
-                controller: controller,
-                scanWindow: frame,
-                onDetect: detect,
-                errorBuilder: (_, exception) =>
-                    const ColoredBox(color: Color(0xFF202020)),
-              ),
-              if (result == null) ...[
-                IgnorePointer(
-                  child: AnimatedBuilder(
-                    animation: sweep,
-                    builder: (_, child) => CustomPaint(
-                      painter: _ScanOverlay(
-                        frame: frame,
-                        qr: widget.qrOnly,
-                        progress: sweep.value,
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 24,
-                  right: 24,
-                  bottom: 42,
-                  child: SafeArea(
-                    top: false,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (error != null) ...[
-                          Text(
-                            error!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          TextButton(
-                            onPressed: start,
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                        if (importing) const CircularProgressIndicator(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ValueListenableBuilder<MobileScannerState>(
-                              valueListenable: controller,
-                              builder: (_, state, child) => IconButton(
-                                tooltip: 'Toggle flash',
-                                color: Colors.white,
-                                onPressed:
-                                    state.isRunning &&
-                                        state.torchState !=
-                                            TorchState.unavailable
-                                    ? () async {
-                                        try {
-                                          await controller.toggleTorch();
-                                        } catch (_) {
-                                          message('Flash is unavailable.');
-                                        }
-                                      }
-                                    : null,
-                                icon: Icon(
-                                  state.torchState == TorchState.on
-                                      ? Icons.flash_on
-                                      : Icons.flash_off,
-                                  size: 28,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              tooltip: 'Scan from gallery',
-                              color: Colors.white,
-                              onPressed: importing ? null : gallery,
-                              icon: const Icon(Icons.image_outlined, size: 28),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ValueListenableBuilder<MobileScannerState>(
-                          valueListenable: controller,
-                          builder: (_, state, child) => Row(
-                            children: [
-                              IconButton(
-                                tooltip: 'Zoom out',
-                                color: Colors.white,
-                                onPressed: state.isRunning
-                                    ? () => setZoom(zoom - .1)
-                                    : null,
-                                icon: const Icon(
-                                  Icons.remove_circle_outline,
-                                  size: 20,
-                                ),
-                              ),
-                              Expanded(
-                                child: SliderTheme(
-                                  data: SliderTheme.of(context).copyWith(
-                                    trackHeight: 4,
-                                    thumbShape: const RoundSliderThumbShape(
-                                      enabledThumbRadius: 7,
-                                    ),
-                                  ),
-                                  child: Slider(
-                                    value: zoom,
-                                    activeColor: Colors.white,
-                                    inactiveColor: const Color(0xFF757575),
-                                    semanticFormatterCallback: (v) =>
-                                        '${(v * 100).round()} percent zoom',
-                                    onChanged: state.isRunning ? setZoom : null,
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Zoom in',
-                                color: Colors.white,
-                                onPressed: state.isRunning
-                                    ? () => setZoom(zoom + .1)
-                                    : null,
-                                icon: const Icon(
-                                  Icons.add_circle_outline,
-                                  size: 20,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              if (result != null) ...[
-                const ColoredBox(color: Color(0xFF202020)),
-                Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: CodeResultCard(
-                      qrOnly: widget.qrOnly,
-                      value: result!,
-                      onClose: rescan,
-                      onOpen: openResult,
-                      onCopy: () async {
-                        await Clipboard.setData(ClipboardData(text: result!));
-                        message('Copied to clipboard');
-                      },
-                      onSave: () {
-                        final value = result!;
-                        // Clear the result so the back guard permits returning it.
-                        setState(() => result = null);
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted) Navigator.of(context).pop(value);
-                        });
-                      },
-                    ),
-                  ),
-                ),
-              ],
-              Positioned(
-                top: 12,
-                left: 4,
-                child: SafeArea(
-                  bottom: false,
-                  child: IconButton(
-                    color: Colors.white,
-                    tooltip: result != null || widget.qrOnly
-                        ? 'Back'
-                        : 'Close scanner',
-                    icon: Icon(
-                      result != null || widget.qrOnly
-                          ? Icons.arrow_back
-                          : Icons.close,
-                    ),
-                    onPressed: () =>
-                        result != null ? rescan() : Navigator.of(context).pop(),
-                  ),
-                ),
-              ),
-            ],
-          );
+  Widget build(BuildContext context) => PopScope<Object>(
+    canPop: result == null || savingResult,
+    onPopInvokedWithResult: (didPop, value) { if (!didPop && result != null) rescan(); },
+    child: result != null ? CodeResultScreen(
+      qrOnly: widget.qrOnly, value: result!,
+      formatLabel: barcodeFormatLabel(resultFormat),
+      onClose: rescan, onOpen: openResult, onCopy: copyResult,
+      onSave: saveResult, onPromotion: openPromotion,
+    ) : ValueListenableBuilder<MobileScannerState>(
+      valueListenable: controller,
+      builder: (context,state,_) => ScannerCameraShell(
+        kind: widget.qrOnly ? ScanKind.qr : ScanKind.barcode,
+        status: error ?? (widget.qrOnly ? 'Align the QR code' : 'Align the barcode'),
+        busy: importing || changingMode, showBatch: false, automatic: automatic,
+        torch: state.torchState == TorchState.on,
+        onAuto: () => setState(() { automatic=!automatic; pendingCode=null; pendingFormat=null; pendingAt=null; }),
+        onClose: () => Navigator.of(context).pop(),
+        onFlash: () async {
+          try { await controller.toggleTorch(); } catch (_) { message('Flash is unavailable.'); }
         },
+        onMode: widget.onModeChanged == null ? null : changeMode,
+        onCapture: readCode, onImages: gallery, onFiles: importFiles,
+        preview: LayoutBuilder(builder: (context,constraints) {
+          final size=constraints.biggest;
+          final width=math.min(size.width-48, widget.qrOnly ? 250.0 : 300.0);
+          final frame=Rect.fromCenter(center: Offset(size.width/2,size.height/2),
+            width: width, height: widget.qrOnly ? width : width*.55);
+          return Stack(fit: StackFit.expand, children: [
+            MobileScanner(controller: controller, scanWindow: widget.qrOnly ? frame : BarcodeScanGeometry(frame).scanWindow, onDetect: detect,
+              errorBuilder: (_,exception) => const ColoredBox(color: Colors.black)),
+            IgnorePointer(child: AnimatedBuilder(animation: sweep,
+              builder: (_,child) => CustomPaint(painter: _ScanOverlay(
+                frame: frame, qr: widget.qrOnly, progress: sweep.value)))),
+            if (error != null) Center(child: TextButton(onPressed: start, child: const AppText('Retry'))),
+          ]);
+        }),
       ),
     ),
   );
-}
-
-class CodeResultCard extends StatelessWidget {
-  const CodeResultCard({
-    super.key,
-    required this.qrOnly,
-    required this.value,
-    required this.onClose,
-    required this.onOpen,
-    required this.onCopy,
-    required this.onSave,
-  });
-  final bool qrOnly;
-  final String value;
-  final VoidCallback onClose, onOpen, onCopy, onSave;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 292,
-    padding: const EdgeInsets.fromLTRB(27, 10, 26, 27),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(21),
-    ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [
-            SizedBox(
-              width: double.infinity,
-              height: 30,
-              child: Center(
-                child: Text(
-                  qrOnly ? 'QR Code Detected' : 'Bar Code Detected',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              right: -20,
-              child: IconButton(
-                tooltip: 'Scan again',
-                onPressed: onClose,
-                icon: const Icon(
-                  Icons.cancel,
-                  color: Color(0xFFD2D2D2),
-                  size: 24,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 9),
-        Container(
-          height: 130,
-          width: double.infinity,
-          padding: const EdgeInsets.all(23),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEAEAEA),
-            borderRadius: BorderRadius.circular(21),
-          ),
-          child: SingleChildScrollView(
-            child: SelectableText(
-              value,
-              style: const TextStyle(fontSize: 11, color: Colors.black),
-            ),
-          ),
-        ),
-        const SizedBox(height: 13),
-        Row(
-          children: [
-            Expanded(child: _action('Open', Icons.language, onOpen)),
-            const SizedBox(width: 7),
-            Expanded(child: _action('Copy', Icons.copy, onCopy)),
-            const SizedBox(width: 7),
-            Expanded(child: _action('Save', Icons.ios_share, onSave)),
-          ],
-        ),
-      ],
-    ),
-  );
-
-  Widget _action(String label, IconData icon, VoidCallback callback) =>
-      ElevatedButton(
-        onPressed: callback,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF4D64FF),
-          surfaceTintColor: Colors.transparent,
-          elevation: 3,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          minimumSize: const Size(0, 30),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 14),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13),
-              ),
-            ),
-          ],
-        ),
-      );
 }
 
 class _ScanOverlay extends CustomPainter {
@@ -523,16 +349,27 @@ class _ScanOverlay extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final geometry = BarcodeScanGeometry(frame);
     final outside = Path()
       ..fillType = PathFillType.evenOdd
-      ..addRect(Offset.zero & size)
-      ..addRect(frame);
+      ..addRect(Offset.zero & size);
+    if (qr) {
+      outside.addRect(frame);
+    } else {
+      outside.addRRect(geometry.opening);
+    }
     canvas.drawPath(
       outside,
       Paint()..color = Colors.black.withValues(alpha: .35),
     );
+    if (!qr) {
+      // The mask and corner strokes now share the same rounded rectangle.
+      // Nothing is drawn or decoded outside the rounded blue guide.
+      geometry.paintCorners(canvas);
+      return;
+    }
     final paint = Paint()
-      ..color = qr ? const Color(0xFF267BFF) : const Color(0xFF5063FF)
+      ..color = scannerMint
       ..style = PaintingStyle.stroke
       ..strokeWidth = qr ? 4 : 6
       ..strokeCap = StrokeCap.round;
@@ -571,7 +408,7 @@ class _ScanOverlay extends CustomPainter {
           ..shader = const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xD9267BFF), Color(0x00267BFF)],
+            colors: [Color(0xD91FD1B4), Color(0x001FD1B4)],
           ).createShader(band),
       );
     }

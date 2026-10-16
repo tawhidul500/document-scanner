@@ -5,6 +5,7 @@ import 'package:image/image.dart' as img;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'page_processing.dart';
+import 'edge_detector.dart';
 
 /// Matches the guide shown over the cover-fitted portrait camera preview.
 List<double> idCardGuide(double width, double height) {
@@ -22,6 +23,33 @@ Uint8List processIdCardCapture(Map<String, Object> request) {
   final image = img.decodeImage(request['bytes'] as Uint8List);
   if (image == null) throw const FormatException('Invalid capture');
   final source = img.bakeOrientation(image);
+  // Re-detect against the still photo: preview and still streams may have
+  // different fields of view. Never reuse preview coordinates for the crop.
+  if (request['detectCard'] == true) {
+    final tiny=img.copyResize(source,width:480);
+    final gray=Uint8List(tiny.width*tiny.height);
+    for (var y=0;y<tiny.height;y++) {
+      for (var x=0;x<tiny.width;x++) {
+        final p=tiny.getPixel(x,y);
+        gray[y*tiny.width+x]=((p.r*299+p.g*587+p.b*114)/1000).round();
+      }
+    }
+    final quad=detectDocument({'gray':gray,'width':tiny.width,'height':tiny.height});
+    if (quad != null) {
+      final points=quad.points.map((p) => math.Point(p.x*tiny.width,p.y*tiny.height)).toList();
+      final width=(points[0].distanceTo(points[1])+points[3].distanceTo(points[2]))/2;
+      final height=(points[0].distanceTo(points[3])+points[1].distanceTo(points[2]))/2;
+      final ratio=math.max(width,height)/math.max(1,math.min(width,height));
+      if (ratio>=1.2 && ratio<=2.1) {
+        return processPage({
+          'bytes': request['bytes'] as Uint8List,
+          'corners': quad.points.expand((p) => [p.x,p.y]).toList(),
+          'enhance': request['enhance'] == true,
+        });
+      }
+    }
+  }
+
   final viewWidth = request['width'] as double,
       viewHeight = request['height'] as double;
   final guide = idCardGuide(viewWidth, viewHeight);
@@ -48,7 +76,16 @@ Uint8List processIdCardCapture(Map<String, Object> request) {
   return processPage({
     'bytes': Uint8List.fromList(img.encodePng(cropped)),
     'detect': true,
+    'enhance': request['enhance'] == true,
   });
+}
+
+/// ID previews always use landscape card orientation without stretching pixels.
+Uint8List orientIdCard(Uint8List bytes) {
+  final image=img.decodeImage(bytes);
+  if (image == null) throw const FormatException('Invalid ID card image');
+  if (image.height <= image.width) return bytes;
+  return Uint8List.fromList(img.encodeJpg(img.copyRotate(image,angle:90),quality:94));
 }
 
 Future<Uint8List> buildIdCardPdf(List<String> paths) async {
@@ -70,8 +107,8 @@ Future<Uint8List> buildIdCardPdf(List<String> paths) async {
           for (var i = 0; i < images.length; i++) ...[
             if (i > 0) pw.SizedBox(height: 34),
             pw.SizedBox(
-              width: 500,
-              height: 500 * 54 / 85.6,
+              width: 85.6 * PdfPageFormat.mm,
+              height: 54 * PdfPageFormat.mm,
               child: pw.Image(images[i], fit: pw.BoxFit.contain),
             ),
           ],

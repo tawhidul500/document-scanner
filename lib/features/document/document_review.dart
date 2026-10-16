@@ -1,8 +1,14 @@
+import 'package:pdf_scanner/l10n/app_localizations.dart';
+import 'package:pdf_scanner/theme/app_theme.dart';
+import '../../widgets/reference_toolbar_surface.dart';
+import '../../widgets/app_action_sheet.dart';
+import '../../widgets/app_toolbar_action.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
+import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../data/document_store.dart';
@@ -21,11 +27,13 @@ class DocumentReview extends StatefulWidget {
     required this.directory,
     required this.store,
     required this.document,
+    this.defaultPaperSize = 'a4',
   });
   final List<String> pages;
   final Directory directory;
   final DocumentStore store;
   final ScanFile document;
+  final String defaultPaperSize;
   @override
   State<DocumentReview> createState() => _DocumentReviewState();
 }
@@ -48,13 +56,15 @@ class _DocumentReviewState extends State<DocumentReview> {
     if (mounted)
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(value)));
+      ).showSnackBar(SnackBar(content: AppText(value)));
   }
 
   Future<void> persist() async {
     final bytes = await compute(buildEditedPdfFromPaths, <String, Object>{
       'pages': List<String>.of(pages),
-      'sizes': pages.map((path) => paperSizes[path] ?? 'a4').toList(),
+      'sizes': pages
+          .map((path) => paperSizes[path] ?? widget.defaultPaperSize)
+          .toList(),
     });
     document = await widget.store.replacePdf(document, bytes);
     dirty = false;
@@ -95,7 +105,8 @@ class _DocumentReviewState extends State<DocumentReview> {
     await file.writeAsBytes(bytes, flush: true);
     setState(() {
       final previousPath = pages[current];
-      paperSizes[file.path] = paperSize ?? paperSizes[previousPath] ?? 'a4';
+      paperSizes[file.path] = paperSize ??
+          paperSizes[previousPath] ?? widget.defaultPaperSize;
       paperSizes.remove(previousPath);
       pages[current] = file.path;
       dirty = true;
@@ -122,7 +133,7 @@ class _DocumentReviewState extends State<DocumentReview> {
           pageNumber: current + 1,
           pageCount: pages.length,
           directory: widget.directory,
-          paperSize: paperSizes[pages[current]] ?? 'a4',
+          paperSize: paperSizes[pages[current]] ?? widget.defaultPaperSize,
         ),
       ),
     );
@@ -132,60 +143,29 @@ class _DocumentReviewState extends State<DocumentReview> {
 
   Future<void> showOptions() async {
     if (busy) return;
-    final selected = await showModalBottomSheet<String>(
+    final selected = await showAppActionSheet<String>(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              height: 64,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  const Text(
-                    'Document Files',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                  ),
-                  Positioned(
-                    right: 8,
-                    child: IconButton(
-                      tooltip: 'Close',
-                      onPressed: () => Navigator.pop(sheetContext),
-                      icon: const Icon(Icons.cancel, color: Color(0xFF989DA5)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: Color(0xFFF1F1F1)),
-            for (final item in [
-              (Icons.edit_outlined, 'Rename', 'Rename'),
-              (Icons.file_download_outlined, 'Download', 'Export PDF'),
-              (Icons.picture_as_pdf_outlined, 'Export as PDF', 'Export PDF'),
-            ]) ...[
-              ListTile(
-                dense: true,
-                minTileHeight: 40,
-                leading: Icon(item.$1, color: Colors.black),
-                title: Text(item.$2, style: const TextStyle(fontSize: 16)),
-                onTap: () => Navigator.pop(sheetContext, item.$3),
-              ),
-              const Divider(height: 1, indent: 64, color: Color(0xFFF1F1F1)),
-            ],
-            if (dirty)
-              TextButton(
-                onPressed: () => Navigator.pop(sheetContext, 'Save changes'),
-                child: const Text('Save changes'),
-              ),
-          ],
-        ),
-      ),
+      title: const AppText('Document Files'),
+      actions: (sheetContext) => [
+        for (final item in [
+          (Icons.edit_outlined, 'Rename', 'Rename'),
+          (Icons.print_outlined, 'Print', 'Print'),
+          (Icons.share_outlined, 'Share', 'Share'),
+          (Icons.file_download_outlined, 'Download', 'Export PDF'),
+          (Icons.picture_as_pdf_outlined, 'Export as PDF', 'Export PDF'),
+        ])
+          AppMenuAction(
+            icon: item.$1,
+            label: item.$2,
+            onTap: () => Navigator.pop(sheetContext, item.$3),
+          ),
+        if (dirty)
+          AppMenuAction(
+            icon: Icons.save_outlined,
+            label: 'Save changes',
+            onTap: () => Navigator.pop(sheetContext, 'Save changes'),
+          ),
+      ],
     );
     if (selected != null && mounted) await option(selected);
   }
@@ -197,7 +177,7 @@ class _DocumentReviewState extends State<DocumentReview> {
       context: context,
       builder: (c) => StatefulBuilder(
         builder: (c, setDialog) => AlertDialog(
-          title: const Text('Rename document'),
+          title: const AppText('Rename document'),
           content: SizedBox(
             width: 300,
             height: 120,
@@ -205,10 +185,10 @@ class _DocumentReviewState extends State<DocumentReview> {
               controller: controller,
               maxLength: 100,
               decoration: InputDecoration(
-                labelText: 'File name',
+                labelText: context.tr('File name'),
                 suffixText: '.pdf',
                 helperText: ' ',
-                errorText: validation,
+                errorText: context.trOrNull(validation),
                 errorMaxLines: 2,
               ),
             ),
@@ -216,7 +196,7 @@ class _DocumentReviewState extends State<DocumentReview> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(c),
-              child: const Text('Cancel'),
+              child: const AppText('Cancel'),
             ),
             FilledButton(
               onPressed: () {
@@ -226,7 +206,7 @@ class _DocumentReviewState extends State<DocumentReview> {
                   setDialog(() => validation = e.message);
                 }
               },
-              child: const Text('Save'),
+              child: const AppText('Save'),
             ),
           ],
         ),
@@ -245,6 +225,10 @@ class _DocumentReviewState extends State<DocumentReview> {
   Future<void> option(String value) async {
     if (busy) return;
     switch (value) {
+      case 'Print':
+        await printDocument();
+      case 'Share':
+        await share();
       case 'Rename':
         await rename();
       case 'Save changes':
@@ -288,15 +272,15 @@ class _DocumentReviewState extends State<DocumentReview> {
         final yes = await showDialog<bool>(
           context: context,
           builder: (c) => AlertDialog(
-            title: const Text('Delete this page?'),
+            title: const AppText('Delete this page?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(c, false),
-                child: const Text('Cancel'),
+                child: const AppText('Cancel'),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(c, true),
-                child: const Text('Delete'),
+                child: const AppText('Delete'),
               ),
             ],
           ),
@@ -337,9 +321,20 @@ class _DocumentReviewState extends State<DocumentReview> {
       ),
     );
   });
-  Future<void> convert() async {
+  Future<void> printDocument() => run(() async {
+    if (dirty) await persist();
+    final bytes = await widget.store.fileFor(document).readAsBytes();
+    if (!mounted) return;
+    await Printing.layoutPdf(
+      name: document.filename,
+      dynamicLayout: false,
+      onLayout: (_) async => bytes,
+    );
+  });
+
+  Future<void> ocr() async {
     if (busy) return;
-    setState(() => selectedAction = 'Convert');
+    setState(() => selectedAction = 'OCR');
     final saved = await Navigator.of(context).push<ScanFile>(
       MaterialPageRoute(
         builder: (_) =>
@@ -347,7 +342,7 @@ class _DocumentReviewState extends State<DocumentReview> {
       ),
     );
     if (saved != null && mounted)
-      message('${saved.filename} saved to Documents.');
+      message(context.tr('{filename} saved to Documents.', {'filename': saved.filename}));
   }
 
   @override
@@ -357,9 +352,9 @@ class _DocumentReviewState extends State<DocumentReview> {
       if (!didPop) close();
     },
     child: Scaffold(
-      backgroundColor: const Color(0xFFEBEBEB),
+      backgroundColor: AppPalette.of(context).background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppPalette.of(context).surface,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           onPressed: busy ? null : close,
@@ -367,14 +362,16 @@ class _DocumentReviewState extends State<DocumentReview> {
         ),
         title: Text(
           document.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         actions: [
           TextButton(
             onPressed: busy ? null : showOptions,
-            child: const Text(
+            child: AppText(
               'Option',
-              style: TextStyle(color: Color(0xFF0055FF), fontSize: 16),
+              style: const TextStyle(fontSize: 16),
             ),
           ),
         ],
@@ -402,26 +399,26 @@ class _DocumentReviewState extends State<DocumentReview> {
           ),
           Padding(
             padding: const EdgeInsets.all(14),
-            child: Text(
+            child: AppText(
               '${current + 1}/${pages.length}',
-              style: const TextStyle(fontSize: 21, color: Colors.black87),
+              style: TextStyle(fontSize: 21, color: AppPalette.of(context).text),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: ColoredBox(
-        color: Colors.white,
+      bottomNavigationBar: ReferenceToolbarSurface(
         child: SafeArea(
           top: false,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                action(Icons.share_outlined, 'Share', share),
                 action(Icons.edit_note_outlined, 'Edit', openEditor),
-                action(Icons.document_scanner_outlined, 'Convert', convert),
                 action(Icons.draw_outlined, 'Sign', sign),
+                action(Icons.document_scanner_outlined, 'OCR', ocr),
+                action(Icons.share_outlined, 'Share', share),
+                action(Icons.file_download_outlined, 'Export',
+                    () => option('Export PDF')),
               ],
             ),
           ),
@@ -435,7 +432,7 @@ class _DocumentReviewState extends State<DocumentReview> {
       key: ValueKey('${path}_$revision'),
       fit: BoxFit.contain,
       errorBuilder: (_, error, stack) =>
-          const Text('Could not display this page.'),
+          const AppText('Could not display this page.'),
     );
     final paper = paperSizes[path];
     if (paper != null && paper != 'original') {
@@ -451,28 +448,17 @@ class _DocumentReviewState extends State<DocumentReview> {
     return image;
   }
 
-  Widget action(IconData icon, String label, VoidCallback callback) =>
-      TextButton(
-        onPressed: busy
-            ? null
-            : () {
-                setState(() => selectedAction = label);
-                callback();
-              },
-        style: TextButton.styleFrom(
-          foregroundColor: selectedAction == label
-              ? const Color(0xFF5262FF)
-              : Colors.black,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 27),
-            const SizedBox(height: 4),
-            Text(label),
-          ],
-        ),
-      );
+  Widget action(IconData icon, String label, VoidCallback callback) => Expanded(
+    child: AppToolbarAction(
+      label: label,
+      icon: icon,
+      selected: selectedAction == label,
+      onPressed: busy ? null : () {
+        setState(() => selectedAction = label);
+        callback();
+      },
+    ),
+  );
 }
 
 Future<Uint8List> buildPdfFromPaths(List<String> pages) async {

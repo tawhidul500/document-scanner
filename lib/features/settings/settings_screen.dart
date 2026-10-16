@@ -1,33 +1,22 @@
+import '../../l10n/language_options.dart';
+import 'package:pdf_scanner/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../data/app_preferences.dart';
-import 'settings_strings.dart';
+import '../../widgets/reference_navigation.dart';
 
-const _blue = Color(0xFF205BC3);
-const _ink = Color(0xFF102B61);
-const _pale = Color(0xFFF4F7FD);
-const _muted = Color(0xFF7789A6);
 const _storeUrl = String.fromEnvironment('APP_STORE_URL');
 const _privacyUrl = String.fromEnvironment('PRIVACY_POLICY_URL');
 const _termsUrl = String.fromEnvironment('TERMS_URL');
 const _moreAppsUrl = String.fromEnvironment('MORE_APPS_URL');
 
-const _languages = <(String, String, String, String)>[
-  ('en', '🇬🇧', 'English', 'English'),
-  ('bn', '🇧🇩', 'Bangladesh', 'Bengali'),
-  ('hi', '🇮🇳', 'India', 'Hindi'),
-  ('ar', '🇸🇦', 'Saudi Arabia', 'Arabic'),
-  ('es', '🇪🇸', 'Español', 'Spanish'),
-  ('fr', '🇫🇷', 'Français', 'French'),
-  ('ru', '🇷🇺', 'Русский', 'Russian'),
-  ('id', '🇮🇩', 'Bahasa Indonesia', 'Indonesian'),
-  ('pt', '🇵🇹', 'Português', 'Portuguese'),
-];
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.onScan});
+  final VoidCallback? onScan;
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -42,7 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Could not save settings. Please try again.'),
+            content: AppText('Could not save settings. Please try again.'),
           ),
         );
     } finally {
@@ -59,14 +48,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await showDialog<void>(
         context: context,
         builder: (c) => AlertDialog(
-          title: Text(settingsText(title)),
-          content: const Text(
+          title: AppText(context.tr(title)),
+          content: const AppText(
             'This link is not available in this version yet.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(c),
-              child: const Text('OK'),
+              child: const AppText('OK'),
             ),
           ],
         ),
@@ -80,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Could not open this link. Please try again.'),
+            content: AppText('Could not open this link. Please try again.'),
           ),
         );
     }
@@ -92,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await SharePlus.instance.share(
         ShareParams(
           text:
-              'Document Scanner — Scan, save and share your documents.${_storeUrl.isEmpty ? '' : '\n$_storeUrl'}',
+              '${context.tr('Document Scanner — Scan, save and share your documents.')}${_storeUrl.isEmpty ? '' : '\n$_storeUrl'}',
           sharePositionOrigin: box.localToGlobal(Offset.zero) & box.size,
         ),
       );
@@ -100,7 +89,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Sharing is unavailable. Please try again.'),
+            content: AppText('Sharing is unavailable. Please try again.'),
           ),
         );
     }
@@ -113,106 +102,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final prefs = AppPreferences.instance;
       final language = _languages.firstWhere((l) => l.$1 == prefs.language).$4;
       return _SettingsShell(
-        brand: true,
+        brand: true, showNavigation: false, onScan: widget.onScan,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(15, 22, 15, 28),
+          padding: const EdgeInsets.fromLTRB(15, 25, 15, 28),
           children: [
             _section('App Settings'),
             _card([
-              _row(
-                Icons.language,
-                const Color(0xFF1875EA),
-                'Language',
-                language,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      language,
-                      style: const TextStyle(color: _muted, fontSize: 12),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.chevron_right, color: _muted, size: 20),
-                  ],
-                ),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LanguageScreen()),
-                ),
-              ),
-              _row(
-                Icons.vibration,
-                const Color(0xFF914CFF),
-                'Vibration',
-                'Vibrate during scanning',
-                trailing: Switch.adaptive(
-                  value: prefs.vibration,
-                  activeTrackColor: _blue,
-                  onChanged: saving ? null : (v) => update(vibration: v),
-                ),
-              ),
-              _row(
-                Icons.volume_up_outlined,
-                const Color(0xFF16BE71),
-                'Beep',
-                'Sound during scanning',
-                trailing: Switch.adaptive(
-                  value: prefs.beep,
-                  activeTrackColor: _blue,
-                  onChanged: saving ? null : (v) => update(beep: v),
-                ),
-              ),
+              _row('language', 'Language', language,
+                value: language,
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => LanguageScreen(onScan: widget.onScan)))),
+              _row('theme', 'Theme', 'Appearance of the app',
+                value: themeModeLabel(prefs.themeMode),
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const ThemeScreen()))),
+              _row('vibration', 'Vibration', 'Vibrate during scanning',
+                trailing: _ReferenceSwitch(value: prefs.vibration,
+                  label: context.tr('Vibration'),
+                  onChanged: saving ? null : (v) => update(vibration: v))),
+              _row('beep', 'Beep', 'Sound during scanning',
+                trailing: _ReferenceSwitch(value: prefs.beep,
+                  label: context.tr('Beep'),
+                  onChanged: saving ? null : (v) => update(beep: v))),
             ]),
+            const SizedBox(height: 12),
             _section('Support'),
             _card([
-              _row(
-                Icons.share_outlined,
-                const Color(0xFF1875EA),
-                'Share With Friend',
-                'Recommend this app',
-                onTap: share,
-              ),
-              _row(
-                Icons.star_border,
-                const Color(0xFFFF930F),
-                'Rate Us',
-                'Leave a Google Play review',
-                onTap: () => link('Rate Us', _storeUrl),
-              ),
-              _row(
-                Icons.verified_user_outlined,
-                const Color(0xFF16BE71),
-                'Privacy Policy',
-                'How your data is handled',
-                onTap: () => link('Privacy Policy', _privacyUrl),
-              ),
-              _row(
-                Icons.description_outlined,
-                const Color(0xFF914CFF),
-                'Terms & Conditions',
-                'Terms of use',
-                onTap: () => link('Terms & Conditions', _termsUrl),
-              ),
-              _row(
-                Icons.grid_view_rounded,
-                const Color(0xFF1875EA),
-                'More Apps',
-                'Explore other apps',
-                onTap: () => link('More Apps', _moreAppsUrl),
-              ),
+              _row('share', 'Share With Friend', 'Recommend this app', onTap: share),
+              _row('rate', 'Rate Us', 'Leave a Google Play review',
+                onTap: () => link('Rate Us', _storeUrl)),
+              _row('privacy', 'Privacy Policy', 'How your data is handled',
+                onTap: () => link('Privacy Policy', _privacyUrl)),
+              _row('terms', 'Terms & Conditions', 'Terms of use',
+                onTap: () => link('Terms & Conditions', _termsUrl)),
+              _row('apps', 'More Apps', 'Explore other apps',
+                onTap: () => link('More Apps', _moreAppsUrl)),
             ]),
+            const SizedBox(height: 12),
             _section('About'),
             _card([
-              _row(
-                Icons.info_outline,
-                _ink,
-                'About App',
-                'App information, version, license',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AboutAppScreen()),
-                ),
-              ),
+              _row('about', 'About App', 'App information and version',
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => AboutAppScreen(onScan: widget.onScan)))),
             ]),
           ],
         ),
@@ -221,74 +152,206 @@ class _SettingsScreenState extends State<SettingsScreen> {
   );
 
   Widget _section(String title) => Padding(
-    padding: const EdgeInsets.only(bottom: 8, top: 8),
-    child: Text(
-      settingsText(title),
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: _ink,
-      ),
-    ),
+    padding: const EdgeInsets.only(bottom: 8),
+    child: AppText(context.tr(title), style: TextStyle(
+      fontSize: 13, height: 19 / 13, fontWeight: FontWeight.w600,
+      color: AppPalette.of(context).text)),
   );
-  Widget _card(List<Widget> rows) => Padding(
-    padding: const EdgeInsets.only(bottom: 5),
-    child: Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-        side: const BorderSide(color: Color(0xFFEDF0F7)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (var i = 0; i < rows.length; i++) ...[
-            if (i > 0)
-              const Padding(
-                padding: EdgeInsetsDirectional.only(start: 62, end: 16),
-                child: Divider(height: 1, color: Color(0xFFE5EBF5)),
-              ),
-            rows[i],
-          ],
+
+  Widget _card(List<Widget> rows) => Material(
+    color: AppPalette.of(context).surface,
+    borderRadius: BorderRadius.circular(12),
+    clipBehavior: Clip.antiAlias,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3.5),
+      child: Column(children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) Padding(
+            padding: const EdgeInsetsDirectional.only(start: 62, end: 16),
+            child: Divider(height: 1, thickness: 1,
+              color: AppPalette.of(context).outline)),
+          rows[i],
         ],
+      ]),
+    ),
+  );
+
+  Widget _row(String icon, String title, String subtitle, {
+    String? value, Widget? trailing, VoidCallback? onTap,
+  }) => InkWell(
+    onTap: onTap,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        child: Row(children: [
+          Image.asset(themedAsset(context, 'assets/theme/$icon.png'), width: 37.108,
+            height: 37.108, excludeFromSemantics: true),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center, children: [
+              AppText(context.tr(title), style: TextStyle(
+                color: AppPalette.of(context).text, fontSize: 12,
+                height: 1.35, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 3),
+              AppText(context.tr(subtitle), style: TextStyle(
+                color: AppPalette.of(context).secondary, fontSize: 11, height: 1.35)),
+            ])),
+          if (value != null) ...[
+            const SizedBox(width: 8),
+            Flexible(child: AppText(context.tr(value), textAlign: TextAlign.end,
+              style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 12))),
+          ],
+          const SizedBox(width: 10),
+          trailing ?? Image.asset('assets/theme/chevron.png', width: 9, height: 14, matchTextDirection: true,
+            color: AppPalette.of(context).secondary, excludeFromSemantics: true),
+        ]),
       ),
     ),
   );
-  Widget _row(
-    IconData icon,
-    Color color,
-    String title,
-    String subtitle, {
-    Widget? trailing,
-    VoidCallback? onTap,
-  }) => ListTile(
-    dense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 2),
-    leading: CircleAvatar(
-      radius: 19,
-      backgroundColor: color.withValues(alpha: .12),
-      child: Icon(icon, color: color, size: 23),
+}
+
+String themeModeLabel(ThemeMode mode) => switch (mode) {
+  ThemeMode.system => 'System Default',
+  ThemeMode.light => 'Light',
+  ThemeMode.dark => 'Dark',
+};
+
+class ThemeScreen extends StatefulWidget {
+  const ThemeScreen({super.key, this.preferences});
+  final AppPreferences? preferences;
+  @override
+  State<ThemeScreen> createState() => _ThemeScreenState();
+}
+
+class _ThemeScreenState extends State<ThemeScreen> {
+  bool saving = false;
+  AppPreferences get preferences => widget.preferences ?? AppPreferences.instance;
+
+  Future<void> select(ThemeMode mode) async {
+    if (saving || preferences.themeMode == mode) return;
+    setState(() => saving = true);
+    try {
+      await preferences.update(themeMode: mode);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: AppText('Could not save theme. Please try again.')));
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: preferences,
+    builder: (context, _) => _SettingsShell(
+      title: context.tr('Theme'), showNavigation: false,
+      child: ListView(padding: const EdgeInsets.fromLTRB(10, 30, 19, 24),
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(10, 16, 10, 25),
+            decoration: BoxDecoration(
+              color: AppPalette.of(context).surface,
+              borderRadius: BorderRadius.circular(9),
+              boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 6)],
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              AppText(context.tr('Choose app appearance'), style: TextStyle(
+                color: AppPalette.of(context).text, fontSize: 18,
+                height: 1.35, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 2),
+              AppText(context.tr('Select how Document Scanner looks on your device.'),
+                style: TextStyle(color: AppPalette.of(context).secondary,
+                  fontSize: 12, height: 1.35)),
+              const SizedBox(height: 7.5),
+              for (final mode in ThemeMode.values) ...[
+                if (mode != ThemeMode.system) const SizedBox(height: 9),
+                _option(mode),
+              ],
+            ]),
+          ),
+        ]),
     ),
-    title: Text(
-      settingsText(title),
-      style: const TextStyle(
-        color: _ink,
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
+  );
+
+  Widget _option(ThemeMode mode) {
+    final p = AppPalette.of(context);
+    final selected = preferences.themeMode == mode;
+    final description = switch (mode) {
+      ThemeMode.system => 'Automatically switch between light and dark based on your device settings.',
+      ThemeMode.light => 'Use the light appearance for a bright and clear experience.',
+      ThemeMode.dark => 'Use the dark appearance for a comfortable experience in low light.',
+    };
+    return Semantics(
+      checked: selected, inMutuallyExclusiveGroup: true,
+      enabled: !saving, label: context.tr(themeModeLabel(mode)),
+      child: Material(color: p.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: selected ? p.primary : p.outline,
+            width: selected ? 1.409 : .939)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(key: ValueKey('theme-${mode.name}'),
+          onTap: saving ? null : () => select(mode),
+          child: ConstrainedBox(constraints: const BoxConstraints(minHeight: 96),
+            child: Padding(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 11),
+              child: Row(children: [
+                Image.asset('assets/theme/${mode.name}.png', width: 94, height: 72,
+                  excludeFromSemantics: true),
+                const SizedBox(width: 16.5),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center, children: [
+                    AppText(context.tr(themeModeLabel(mode)), style: TextStyle(
+                      fontSize: 12, height: 1.35, fontWeight: FontWeight.w600, color: p.text)),
+                    const SizedBox(height: 6),
+                    AppText(context.tr(description), style: TextStyle(
+                      fontSize: 10.5, height: 1.35, color: p.secondary)),
+                  ])),
+                const SizedBox(width: 8),
+                Container(width: 22, height: 22,
+                  decoration: BoxDecoration(shape: BoxShape.circle,
+                    border: Border.all(color: selected ? p.primary : p.controlOutline,
+                      width: 2.25)),
+                  child: selected ? Center(child: Container(width: 10.33, height: 10.33,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: p.primary))) : null),
+                const SizedBox(width: 7),
+              ]),
+            ),
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _ReferenceSwitch extends StatelessWidget {
+  const _ReferenceSwitch({required this.value, required this.label, this.onChanged});
+  final bool value;
+  final String label;
+  final ValueChanged<bool>? onChanged;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: context.tr(label), toggled: value, enabled: onChanged != null,
+    child: InkWell(onTap: onChanged == null ? null : () => onChanged!(!value),
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(width: 44, height: 44, child: Center(
+        child: AnimatedContainer(duration: const Duration(milliseconds: 160),
+          width: 41, height: 25.4, padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(14),
+            color: value ? AppPalette.of(context).primary : AppPalette.of(context).controlOutline),
+          child: AnimatedAlign(duration: const Duration(milliseconds: 160),
+            alignment: value ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
+            child: Container(width: 19.4, height: 19.4,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                color: value ? AppPalette.of(context).onPrimary : AppPalette.of(context).surface))),
+        ),
+      )),
     ),
-    subtitle: Text(
-      settingsText(subtitle),
-      style: const TextStyle(color: _muted, fontSize: 11),
-    ),
-    trailing:
-        trailing ?? const Icon(Icons.chevron_right, color: _muted, size: 22),
-    onTap: onTap,
   );
 }
 
 class LanguageScreen extends StatefulWidget {
-  const LanguageScreen({super.key});
+  const LanguageScreen({super.key, this.onScan});
+  final VoidCallback? onScan;
   @override
   State<LanguageScreen> createState() => _LanguageScreenState();
 }
@@ -304,7 +367,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Could not save language. Please try again.'),
+            content: AppText('Could not save language. Please try again.'),
           ),
         );
     } finally {
@@ -316,7 +379,8 @@ class _LanguageScreenState extends State<LanguageScreen> {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: AppPreferences.instance,
     builder: (_, child) => _SettingsShell(
-      title: settingsText('Language'),
+      title: context.tr('Language'),
+      onScan: widget.onScan,
       child: ListView(
         padding: const EdgeInsets.all(15),
         children: [
@@ -324,33 +388,30 @@ class _LanguageScreenState extends State<LanguageScreen> {
             padding: const EdgeInsets.all(13),
             margin: const EdgeInsets.only(bottom: 13),
             decoration: BoxDecoration(
-              color: const Color(0xFFE6F0FF),
+              color: AppPalette.of(context).selected,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFD1E4FF)),
+              border: Border.all(color: AppPalette.of(context).outline),
             ),
             child: Row(
               children: [
-                const CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Color(0xFF1875EA),
-                  child: Icon(Icons.language, color: Colors.white),
-                ),
+                Image.asset(themedAsset(context, 'assets/theme/language.png'),
+                    width: 37.108, height: 37.108, excludeFromSemantics: true),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        settingsText('Choose App Language'),
-                        style: const TextStyle(
-                          color: _ink,
+                      AppText(
+                        context.tr('Choose App Language'),
+                        style: TextStyle(
+                          color: AppPalette.of(context).text,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
                       ),
-                      Text(
-                        settingsText('Change the language used in the app'),
-                        style: const TextStyle(color: _muted, fontSize: 11),
+                      AppText(
+                        context.tr('Change the language used in the app'),
+                        style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 11),
                       ),
                     ],
                   ),
@@ -358,20 +419,20 @@ class _LanguageScreenState extends State<LanguageScreen> {
               ],
             ),
           ),
-          for (final language in _languages)
+          for (final language in appLanguageOptions)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Semantics(
                 selected: AppPreferences.instance.language == language.$1,
                 button: true,
                 child: Material(
-                  color: Colors.white,
+                  color: AppPalette.of(context).surface,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                     side: BorderSide(
                       color: AppPreferences.instance.language == language.$1
-                          ? const Color(0xFF155CFF)
-                          : const Color(0xFFEDF0F7),
+                          ? AppPalette.of(context).primary
+                          : AppPalette.of(context).outline,
                       width: 1.5,
                     ),
                   ),
@@ -384,23 +445,23 @@ class _LanguageScreenState extends State<LanguageScreen> {
                     ),
                     title: Text(
                       language.$3,
-                      style: const TextStyle(
-                        color: _ink,
+                      style: TextStyle(
+                        color: AppPalette.of(context).text,
                         fontWeight: FontWeight.w500,
                         fontSize: 13,
                       ),
                     ),
-                    subtitle: Text(
+                    subtitle: AppText(
                       language.$4,
-                      style: const TextStyle(color: _muted, fontSize: 11),
+                      style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 11),
                     ),
                     trailing: Icon(
                       AppPreferences.instance.language == language.$1
                           ? Icons.radio_button_checked
                           : Icons.radio_button_off,
                       color: AppPreferences.instance.language == language.$1
-                          ? const Color(0xFF155CFF)
-                          : const Color(0xFFB5C5DF),
+                          ? AppPalette.of(context).primary
+                          : AppPalette.of(context).controlOutline,
                     ),
                     onTap: saving ? null : () => select(language.$1),
                   ),
@@ -414,14 +475,16 @@ class _LanguageScreenState extends State<LanguageScreen> {
 }
 
 class AboutAppScreen extends StatelessWidget {
-  const AboutAppScreen({super.key});
+  const AboutAppScreen({super.key, this.onScan});
+  final VoidCallback? onScan;
   @override
   Widget build(BuildContext context) => _SettingsShell(
-    title: settingsText('About App'),
+    onScan: onScan,
+    title: context.tr('About App'),
     child: ListView(
       padding: const EdgeInsets.all(15),
       children: [
-        _panel(
+        _panel(context,
           Row(
             children: [
               Image.asset('assets/home/brand.png', width: 60, height: 60),
@@ -430,40 +493,40 @@ class AboutAppScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    AppText(
                       'Document Scanner',
                       style: TextStyle(
-                        color: _ink,
+                        color: AppPalette.of(context).text,
                         fontWeight: FontWeight.bold,
                         fontSize: 17,
                       ),
                     ),
-                    const Text(
+                    AppText(
                       'Scan • Save • Share',
-                      style: TextStyle(color: _muted, fontSize: 12),
+                      style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 12),
                     ),
                     const SizedBox(height: 5),
-                    _chip('Version 0.4.0'),
+                    _chip(context, 'Version 0.5.0'),
                   ],
                 ),
               ),
             ],
           ),
         ),
-        _heading(settingsText('About')),
-        _panel(
+        _heading(context, context.tr('About')),
+        _panel(context,
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              AppText(
                 'Transform your smartphone into a powerful portable scanner. Scan, organize, convert, and share your documents effortlessly from your mobile device.',
-                style: TextStyle(color: _ink, height: 1.5, fontSize: 13),
+                style: TextStyle(color: AppPalette.of(context).text, height: 1.5, fontSize: 13),
               ),
-              const Divider(color: Color(0xFFE5EBF5)),
-              const Text(
+              Divider(color: AppPalette.of(context).outline),
+              AppText(
                 'Works with',
                 style: TextStyle(
-                  color: _muted,
+                  color: AppPalette.of(context).secondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -481,13 +544,13 @@ class AboutAppScreen extends StatelessWidget {
                     'Certificates',
                     'Photos',
                   ])
-                    _chip(label),
+                    _chip(context, label),
                 ],
               ),
             ],
           ),
         ),
-        _heading('Key Features'),
+        _heading(context, 'Key Features'),
         for (final pair in [
           [
             (Icons.document_scanner_outlined, 'Scan docs\nto PDF', Colors.blue),
@@ -513,24 +576,24 @@ class AboutAppScreen extends StatelessWidget {
                 for (var i = 0; i < pair.length; i++) ...[
                   if (i > 0) const SizedBox(width: 8),
                   Expanded(
-                    child: _panel(
+                    child: _panel(context,
                       Row(
                         children: [
                           CircleAvatar(
                             radius: 18,
-                            backgroundColor: pair[i].$3.withValues(alpha: .12),
+                            backgroundColor: AppPalette.of(context).selected,
                             child: Icon(
                               pair[i].$1,
-                              color: pair[i].$3,
+                              color: AppPalette.of(context).primary,
                               size: 21,
                             ),
                           ),
                           const SizedBox(width: 9),
                           Expanded(
-                            child: Text(
+                            child: AppText(
                               pair[i].$2,
-                              style: const TextStyle(
-                                color: _ink,
+                              style: TextStyle(
+                                color: AppPalette.of(context).text,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 12,
                               ),
@@ -549,7 +612,7 @@ class AboutAppScreen extends StatelessWidget {
           margin: const EdgeInsets.only(top: 10),
           padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
-            color: _blue,
+            color: AppPalette.of(context).header,
             borderRadius: BorderRadius.circular(13),
           ),
           child: const Row(
@@ -560,7 +623,7 @@ class AboutAppScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    AppText(
                       'Go paperless',
                       style: TextStyle(
                         color: Colors.white,
@@ -568,7 +631,7 @@ class AboutAppScreen extends StatelessWidget {
                         fontSize: 15,
                       ),
                     ),
-                    Text(
+                    AppText(
                       'Keep your important documents organized',
                       style: TextStyle(color: Colors.white, fontSize: 11),
                     ),
@@ -578,46 +641,38 @@ class AboutAppScreen extends StatelessWidget {
             ],
           ),
         ),
-        TextButton(
-          onPressed: () => showLicensePage(
-            context: context,
-            applicationName: 'Document Scanner',
-            applicationVersion: '0.4.0',
-          ),
-          child: const Text('Open-source licenses'),
-        ),
       ],
     ),
   );
-  Widget _heading(String text) => Padding(
+  Widget _heading(BuildContext context, String text) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 9),
-    child: Text(
+    child: AppText(
       text,
-      style: const TextStyle(
-        color: _ink,
+      style: TextStyle(
+        color: AppPalette.of(context).text,
         fontWeight: FontWeight.bold,
         fontSize: 15,
       ),
     ),
   );
-  Widget _panel(Widget child, {double padding = 16}) => Container(
+  Widget _panel(BuildContext context, Widget child, {double padding = 16}) => Container(
     padding: EdgeInsets.all(padding),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: AppPalette.of(context).surface,
       borderRadius: BorderRadius.circular(14),
     ),
     child: child,
   );
-  Widget _chip(String text) => Container(
+  Widget _chip(BuildContext context, String text) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
     decoration: BoxDecoration(
-      color: const Color(0xFFE3EEFF),
+      color: AppPalette.of(context).selected,
       borderRadius: BorderRadius.circular(20),
     ),
-    child: Text(
+    child: AppText(
       text,
-      style: const TextStyle(
-        color: _blue,
+      style: TextStyle(
+        color: AppPalette.of(context).primary,
         fontSize: 12,
         fontWeight: FontWeight.w600,
       ),
@@ -626,77 +681,82 @@ class AboutAppScreen extends StatelessWidget {
 }
 
 class _SettingsShell extends StatelessWidget {
-  const _SettingsShell({required this.child, this.title, this.brand = false});
+  const _SettingsShell({required this.child, this.title, this.brand = false, this.onScan, this.showNavigation = true});
   final Widget child;
   final String? title;
   final bool brand;
+  final bool showNavigation;
+  final VoidCallback? onScan;
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
-    value: const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.dark,
-    ),
+    value: AppPalette.of(context).systemBars,
     child: Directionality(
-      textDirection: AppPreferences.instance.language == 'ar'
-          ? TextDirection.rtl
-          : TextDirection.ltr,
+      textDirection: Directionality.of(context),
       child: Scaffold(
-        backgroundColor: _blue,
+        backgroundColor: AppPalette.of(context).surface,
         appBar: AppBar(
-          backgroundColor: _blue,
+          backgroundColor: AppPalette.of(context).header,
           foregroundColor: Colors.white,
           elevation: 0,
-          automaticallyImplyLeading: !brand,
+          systemOverlayStyle: AppPalette.of(context).systemBars,
+          automaticallyImplyLeading: false,
+          toolbarHeight: brand ? 57 : 50,
+          titleSpacing: brand ? 15 : 9,
+          leadingWidth: brand ? null : 56,
+          leading: brand ? null : IconButton(
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            onPressed: () => Navigator.maybePop(context),
+            icon: Image.asset('assets/theme/back.png', width: 22, height: 18, matchTextDirection: true)),
           title: brand
               ? Row(
                   children: [
-                    Image.asset('assets/home/brand.png', width: 38),
+                    Semantics(button: true, label: context.tr('Back to Home'), child: GestureDetector(onTap: () => Navigator.maybePop(context), child: Image.asset('assets/home/brand.png', width: 39))),
                     const SizedBox(width: 12),
                     const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          AppText(
                             'Document Scanner',
                             style: TextStyle(
-                              fontSize: 19,
+                              fontSize: 20,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          Text(
+                          AppText(
                             'Scan • Save • Share',
-                            style: TextStyle(fontSize: 12),
+                            style: TextStyle(fontSize: 13),
                           ),
                         ],
                       ),
                     ),
                   ],
                 )
-              : Text(
+              : AppText(
                   title!,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-          actions: brand
-              ? [
-                  IconButton(
-                    tooltip: 'Back to Home',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ]
-              : null,
+
         ),
-        body: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        bottomNavigationBar: !showNavigation ? null : ReferenceHomeNavigation(
+          settingsSelected: true,
+          homeSelected: false,
+          onHome: () => Navigator.of(context).popUntil((route) => route.isFirst),
+          onScan: onScan == null ? null : () => scanFromNavigation(context, onScan),
+          onSettings: () {
+            if (!brand) Navigator.of(context).pop();
+          },
+        ),
+        body: ColoredBox(color: AppPalette.of(context).header, child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
           child: ColoredBox(
-            color: _pale,
+            color: AppPalette.of(context).background,
             child: SizedBox.expand(child: child),
           ),
-        ),
+        )),
       ),
     ),
   );

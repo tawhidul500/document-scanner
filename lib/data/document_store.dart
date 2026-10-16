@@ -22,11 +22,13 @@ class ScanFile {
     required this.extension,
     required this.created,
     required this.bytes,
+    this.idCardSideCount = 0,
   });
   final String id, name, extension;
   final ScanKind kind;
   final DateTime created;
   final int bytes;
+  final int idCardSideCount;
   String get filename => '$name.$extension';
   Map<String, Object> toJson() => {
     'id': id,
@@ -35,6 +37,7 @@ class ScanFile {
     'extension': extension,
     'created': created.toIso8601String(),
     'bytes': bytes,
+    'idCardSideCount': idCardSideCount,
   };
   factory ScanFile.fromJson(Map<String, dynamic> j) => ScanFile(
     id: j['id'] as String,
@@ -43,6 +46,7 @@ class ScanFile {
     extension: j['extension'] as String,
     created: DateTime.parse(j['created'] as String),
     bytes: j['bytes'] as int,
+    idCardSideCount: (j['idCardSideCount'] as int?) ?? 0,
   );
 }
 
@@ -56,6 +60,10 @@ class DocumentStore extends ChangeNotifier {
   int unreadableRecords = 0;
   File fileFor(ScanFile doc) =>
       File('${directory.path}/${doc.id}.${doc.extension}');
+  File idCardSideFor(ScanFile doc, int index) {
+    if (index < 0 || index >= 2) throw RangeError.range(index,0,1);
+    return File('${directory.path}/${doc.id}_side_$index.jpg');
+  }
   File _meta(String id) => File('${directory.path}/$id.json');
 
   Future<void> load({ValueChanged<double>? onProgress}) async {
@@ -75,6 +83,7 @@ class DocumentStore extends ChangeNotifier {
         );
         if (!RegExp(r'^\d+_[0-9a-f]+$').hasMatch(doc.id) ||
             !['pdf', 'txt'].contains(doc.extension) ||
+            doc.idCardSideCount < 0 || doc.idCardSideCount > 2 ||
             !await fileFor(doc).exists()) {
           throw const FormatException('Invalid or missing content');
         }
@@ -116,7 +125,13 @@ class DocumentStore extends ChangeNotifier {
     ScanKind kind,
     String extension, {
     String? name,
+    List<List<int>> idCardSides = const [],
   }) async {
+    if (idCardSides.length > 2 ||
+        (idCardSides.isNotEmpty && (kind != ScanKind.idCard || extension != 'pdf')) ||
+        idCardSides.any((side) => side.isEmpty)) {
+      throw ArgumentError('An ID card has at most two nonempty side images.');
+    }
     if (!['pdf', 'txt'].contains(extension))
       throw ArgumentError('Unsupported format');
     final validatedName = name == null ? null : validateName(name);
@@ -132,12 +147,20 @@ class DocumentStore extends ChangeNotifier {
       extension: extension,
       created: now,
       bytes: bytes.length,
+      idCardSideCount: idCardSides.length,
     );
     await directory.create(recursive: true);
     await fileFor(doc).writeAsBytes(bytes, flush: true);
     try {
+      for (var i=0;i<idCardSides.length;i++) {
+        await idCardSideFor(doc,i).writeAsBytes(idCardSides[i],flush:true);
+      }
       await _writeMetadata(doc);
     } catch (_) {
+      for (var i=0;i<idCardSides.length;i++) {
+        final side=idCardSideFor(doc,i);
+        if (await side.exists()) await side.delete();
+      }
       await fileFor(doc).delete();
       rethrow;
     }
@@ -204,6 +227,7 @@ class DocumentStore extends ChangeNotifier {
       extension: doc.extension,
       created: doc.created,
       bytes: doc.bytes,
+      idCardSideCount: doc.idCardSideCount,
     );
     await _writeMetadata(updated);
     _files[_files.indexWhere((e) => e.id == doc.id)] = updated;
@@ -238,6 +262,9 @@ class DocumentStore extends ChangeNotifier {
       if (await temp.exists()) await temp.delete();
     }
     _files[index] = updated;
+    for (var i=0;i<doc.idCardSideCount;i++) {
+      try { final side=idCardSideFor(doc,i); if (await side.exists()) await side.delete(); } catch (_) {}
+    }
     notifyListeners();
     try {
       await backup.delete();
@@ -250,6 +277,10 @@ class DocumentStore extends ChangeNotifier {
   Future<void> delete(ScanFile doc) async {
     // Remove content first: never report success while retaining the scan.
     if (await fileFor(doc).exists()) await fileFor(doc).delete();
+    for (var i=0;i<2;i++) {
+      final side=idCardSideFor(doc,i);
+      if (await side.exists()) await side.delete();
+    }
     if (await _meta(doc.id).exists()) await _meta(doc.id).delete();
     _files.removeWhere((e) => e.id == doc.id);
     notifyListeners();

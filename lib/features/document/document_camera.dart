@@ -1,3 +1,8 @@
+import 'package:pdf_scanner/l10n/app_localizations.dart';
+import '../../widgets/scanner_camera_shell.dart';
+import '../../data/document_store.dart';
+import 'package:flutter_file_dialog/flutter_file_dialog.dart';
+import 'package:printing/printing.dart';
 import '../../data/app_preferences.dart';
 import 'dart:async';
 import 'dart:io';
@@ -19,10 +24,12 @@ class DocumentCamera extends StatefulWidget {
     required this.directory,
     this.remaining = 50,
     this.idCard = false,
+    this.onModeChanged,
   });
   final Directory directory;
   final int remaining;
   final bool idCard;
+  final ValueChanged<ScanKind>? onModeChanged;
   @override
   State<DocumentCamera> createState() => _DocumentCameraState();
 }
@@ -31,12 +38,15 @@ class _DocumentCameraState extends State<DocumentCamera>
     with WidgetsBindingObserver {
   CameraController? camera;
   bool bothSides = false;
+  bool get batchEnabled => widget.idCard ? bothSides : batch;
   Size idViewport = Size.zero;
   int get captureLimit =>
       widget.idCard ? (bothSides ? 2 : 1) : widget.remaining;
   final pages = <String>[];
   final gate = AutoCaptureGate();
   DocumentQuad? quad;
+  bool enhance = true;
+  double sharpness = 0;
   bool automatic = true,
       batch = false,
       busy = false,
@@ -71,7 +81,7 @@ class _DocumentCameraState extends State<DocumentCamera>
             );
             final next = CameraController(
               rear,
-              ResolutionPreset.high,
+              ResolutionPreset.veryHigh,
               enableAudio: false,
               imageFormatGroup: Platform.isIOS
                   ? ImageFormatGroup.bgra8888
@@ -82,6 +92,10 @@ class _DocumentCameraState extends State<DocumentCamera>
             await next.lockCaptureOrientation(DeviceOrientation.portraitUp);
             if (!mounted || !active || leaving) return;
             await next.setFlashMode(torch ? FlashMode.torch : FlashMode.off);
+            try {
+              await next.setFocusMode(FocusMode.auto);
+              await next.setExposureMode(ExposureMode.auto);
+            } on CameraException { /* Optional on fixed-focus cameras. */ }
             await next.startImageStream(onFrame);
             if (mounted) setState(() => error = null);
           } catch (e) {
@@ -139,7 +153,7 @@ class _DocumentCameraState extends State<DocumentCamera>
       final clockwise = current.description.sensorOrientation != 270;
       final ow = rotate ? frame.height : frame.width;
       final oh = rotate ? frame.width : frame.height;
-      const w = 200;
+      const w = 320;
       final h = (oh * w / ow).round();
       final gray = Uint8List(w * h);
       final bgra = frame.format.group == ImageFormatGroup.bgra8888;
@@ -161,6 +175,7 @@ class _DocumentCameraState extends State<DocumentCamera>
               : plane.bytes[offset];
         }
       }
+      final quality = frameSharpness(gray, w, h);
       var detected = await compute(detectDocument, <String, Object>{
         'gray': gray,
         'width': w,
@@ -168,44 +183,16 @@ class _DocumentCameraState extends State<DocumentCamera>
       });
       if (!mounted || busy || !active || camera != current || leaving) return;
       if (widget.idCard && detected != null) {
-        final points = detected.points;
-        final cardWidth =
-            (points[0].distanceTo(points[1]) +
-                points[3].distanceTo(points[2])) *
-            w /
-            2;
-        final cardHeight =
-            (points[0].distanceTo(points[3]) +
-                points[1].distanceTo(points[2])) *
-            h /
-            2;
-        final ratio = cardHeight == 0 ? 0 : cardWidth / cardHeight;
+        final points = detected.points.map((p) => math.Point(p.x*w,p.y*h)).toList();
+        final cardWidth = (points[0].distanceTo(points[1]) + points[3].distanceTo(points[2]))/2;
+        final cardHeight = (points[0].distanceTo(points[3]) + points[1].distanceTo(points[2]))/2;
+        final ratio = math.max(cardWidth,cardHeight) / math.max(1,math.min(cardWidth,cardHeight));
         if (ratio < 1.2 || ratio > 2.1) detected = null;
-        if (!idViewport.isEmpty && detected != null) {
-          final zoom = math.max(idViewport.width / w, idViewport.height / h);
-          final offset = Offset(
-            (idViewport.width - w * zoom) / 2,
-            (idViewport.height - h * zoom) / 2,
-          );
-          final guide = idCardGuide(idViewport.width, idViewport.height);
-          final allowed = Rect.fromLTWH(
-            guide[0],
-            guide[1],
-            guide[2],
-            guide[3],
-          ).inflate(12);
-          if (points.any(
-            (p) => !allowed.contains(
-              Offset(p.x * w * zoom, p.y * h * zoom) + offset,
-            ),
-          ))
-            detected = null;
-        }
       }
-      setState(() => quad = detected);
+      setState(() { quad = detected; sharpness = quality; });
       if (automatic &&
           pages.length < captureLimit &&
-          gate.update(detected, DateTime.now()))
+          gate.update(detected, DateTime.now(), ready: quality >= 35))
         unawaited(capture());
     } catch (_) {
       if (mounted) setState(() => quad = null);
@@ -219,21 +206,25 @@ class _DocumentCameraState extends State<DocumentCamera>
     if (mounted)
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(value)));
+      ).showSnackBar(SnackBar(content: AppText(value)));
   }
 
   Future<void> append(Uint8List bytes, {bool fromCamera = false}) async {
     if (pages.length >= captureLimit) return;
-    final output = widget.idCard && fromCamera && !idViewport.isEmpty
+    var output = widget.idCard && fromCamera && !idViewport.isEmpty
         ? await compute(processIdCardCapture, <String, Object>{
             'bytes': bytes,
             'width': idViewport.width,
             'height': idViewport.height,
+            'detectCard': true,
+            'enhance': enhance,
           })
         : await compute(processPage, <String, Object>{
             'bytes': bytes,
             'detect': true,
+            'enhance': enhance,
           });
+    if (widget.idCard) output = await compute(orientIdCard, output);
     final path =
         '${widget.directory.path}/${DateTime.now().microsecondsSinceEpoch}_${pages.length}.jpg';
     await File(path).writeAsBytes(output, flush: true);
@@ -246,7 +237,7 @@ class _DocumentCameraState extends State<DocumentCamera>
     if (pages.length >= captureLimit) {
       notice(
         widget.idCard
-            ? 'Capture complete. Tap the arrow to preview.'
+            ? 'Capture complete. Tap Done to preview.'
             : 'Page limit reached. Tap Done.',
       );
       return;
@@ -267,7 +258,7 @@ class _DocumentCameraState extends State<DocumentCamera>
       gate.captured();
       unawaited(AppPreferences.instance.scanFeedback());
       if (!mounted) return;
-      if (!batch && !widget.idCard) {
+      if (!batchEnabled) {
         finish();
         return;
       }
@@ -276,12 +267,12 @@ class _DocumentCameraState extends State<DocumentCamera>
       if (widget.idCard) {
         notice(
           pages.length >= captureLimit
-              ? 'Ready. Tap the arrow to preview.'
+              ? 'Ready. Tap Done to preview.'
               : 'Front captured. Turn the card over to scan the back.',
         );
       } else
         notice(
-          'Page ${pages.length} captured. Move the document away before the next auto capture.',
+          context.tr('Page {count} captured. Move the document away before the next auto capture.', {'count': pages.length}),
         );
     } catch (_) {
       notice('Capture failed. Please try again.');
@@ -309,7 +300,7 @@ class _DocumentCameraState extends State<DocumentCamera>
   Future<void> gallery() async {
     if (busy || leaving) return;
     if (pages.length >= captureLimit) {
-      notice('Capture complete. Tap the arrow to preview.');
+      notice('Capture complete. Tap Done to preview.');
       return;
     }
     setState(() => busy = true);
@@ -317,8 +308,8 @@ class _DocumentCameraState extends State<DocumentCamera>
       if (camera?.value.isStreamingImages ?? false)
         await camera!.stopImageStream();
       final picker = ImagePicker();
-      final images = batch ? await picker.pickMultiImage() : <XFile>[];
-      if (!batch) {
+      final images = batchEnabled && !widget.idCard ? await picker.pickMultiImage() : <XFile>[];
+      if (!batchEnabled || widget.idCard) {
         final one = await picker.pickImage(source: ImageSource.gallery);
         if (one != null) images.add(one);
       }
@@ -326,7 +317,7 @@ class _DocumentCameraState extends State<DocumentCamera>
         await append(await image.readAsBytes());
       }
       if (!mounted) return;
-      if (images.isNotEmpty && !batch && !widget.idCard) {
+      if (images.isNotEmpty && !batchEnabled) {
         finish();
         return;
       }
@@ -354,581 +345,165 @@ class _DocumentCameraState extends State<DocumentCamera>
   Future<void> close() async {
     if (busy) return;
     if (pages.isNotEmpty) {
+      setState(() => busy = true);
       final discard = await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-          title: const Text('Discard these scans?'),
-          content: Text('${pages.length} unsaved pages will be discarded.'),
+          title: const AppText('Discard these scans?'),
+          content: AppText('{count} unsaved pages will be discarded.', arguments: {'count': pages.length}),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(c, false),
-              child: const Text('Keep scanning'),
+              child: const AppText('Keep scanning'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(c, true),
-              child: const Text('Discard'),
+              child: const AppText('Discard'),
             ),
           ],
         ),
       );
-      if (discard != true || !mounted) return;
+      if (!mounted) return;
+      setState(() => busy = false);
+      if (discard != true) return;
     }
     leaving = true;
     Navigator.of(context).pop();
   }
 
-  Widget buildIdCamera() {
+  Future<void> changeMode(ScanKind kind) async {
+    if (busy || kind == (widget.idCard ? ScanKind.idCard : ScanKind.document)) return;
+    if (pages.isNotEmpty) {
+      notice('Tap Done to save these pages before switching scan type.');
+      return;
+    }
+    if (widget.onModeChanged == null) return;
+    setState(() => busy = true);
+    gate.reset(clearRemoval: true);
+    configureCamera(false);
+    await cameraTask; // Never let two camera plugins own the hardware together.
+    if (mounted) widget.onModeChanged!(kind);
+  }
+
+  Future<void> importFiles() async {
+    if (busy || leaving) return;
+    if (pages.length >= captureLimit) {
+      notice('All sides captured. Tap Done to preview.');
+      return;
+    }
+    setState(() => busy = true);
+    try {
+      if (camera?.value.isStreamingImages ?? false) await camera!.stopImageStream();
+      final path = await FlutterFileDialog.pickFile(params: OpenFileDialogParams(
+        dialogType: OpenFileDialogType.document,
+        fileExtensionsFilter: widget.idCard ? ['jpg', 'jpeg', 'png'] : ['pdf', 'jpg', 'jpeg', 'png'],
+        mimeTypesFilter: widget.idCard ? ['image/jpeg', 'image/png'] : ['application/pdf', 'image/jpeg', 'image/png'],
+        copyFileToCacheDir: true));
+      if (path != null) {
+        final bytes = await File(path).readAsBytes();
+        if (widget.idCard && path.toLowerCase().endsWith('.pdf')) {
+          notice('Import an image of one card side, not a PDF.');
+          return;
+        }
+        if (path.toLowerCase().endsWith('.pdf')) {
+          await for (final page in Printing.raster(bytes, dpi: 180)) {
+            if (pages.length >= captureLimit) break;
+            // Existing PDFs already have page bounds; do not crop their content.
+            final output = await compute(processPage, <String,Object>{
+              'bytes': await page.toPng(), 'enhance': enhance});
+            final destination = '${widget.directory.path}/import_${DateTime.now().microsecondsSinceEpoch}.jpg';
+            await File(destination).writeAsBytes(output, flush: true);
+            if (mounted) setState(() => pages.add(destination));
+          }
+        } else {
+          await append(bytes);
+        }
+        if (mounted && pages.isNotEmpty && !batchEnabled) finish();
+      }
+    } catch (_) {
+      notice(widget.idCard ? 'Choose a JPEG or PNG image of one card side.' : 'Could not import that file. Choose a PDF, JPEG or PNG.');
+    } finally {
+      if (mounted && !leaving) {
+        setState(() => busy = false);
+        configureCamera(active);
+      }
+    }
+  }
+
+  Future<void> focus(Offset point) async {
+    gate.reset();
+    try {
+      await camera?.setFocusPoint(point);
+      await camera?.setExposurePoint(point);
+    } on CameraException { /* Some cameras only support continuous focus. */ }
+  }
+
+  Widget livePreview() {
     final c = camera;
-    final ready = pages.length == captureLimit;
-    final side = pages.isEmpty ? 'front' : 'back';
-    return PopScope(
-      canPop: leaving,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) unawaited(close());
-      },
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0B101C),
-        body: SafeArea(
-          child: Column(
-            children: [
-              SizedBox(
-                height: 60,
-                child: Row(
-                  children: [
-                    const SizedBox(width: 14),
-                    IconButton(
-                      onPressed: busy ? null : close,
-                      tooltip: 'Close ID scanner',
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: busy || ready
-                          ? null
-                          : () => setState(() {
-                              automatic = !automatic;
-                              gate.reset();
-                            }),
-                      icon: const Icon(
-                        Icons.tune,
-                        size: 16,
-                        color: Colors.white70,
-                      ),
-                      label: Text(
-                        automatic ? 'Auto' : 'Manual',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: busy || c == null || !c.value.isInitialized
-                          ? null
-                          : () async {
-                              try {
-                                await c.setFlashMode(
-                                  torch ? FlashMode.off : FlashMode.torch,
-                                );
-                                if (mounted) setState(() => torch = !torch);
-                              } catch (_) {
-                                notice('Flash is unavailable on this camera.');
-                              }
-                            },
-                      tooltip: 'Toggle flash',
-                      icon: Icon(
-                        torch ? Icons.flash_on : Icons.flash_off,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, box) {
-                    idViewport = Size(box.maxWidth, box.maxHeight);
-                    final guide = idCardGuide(box.maxWidth, box.maxHeight);
-                    return Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        if (c != null && c.value.isInitialized)
-                          ClipRect(
-                            child: FittedBox(
-                              fit: BoxFit.cover,
-                              child: SizedBox(
-                                width: 1000 / c.value.aspectRatio,
-                                height: 1000,
-                                child: CameraPreview(c),
-                              ),
-                            ),
-                          ),
-                        if (error != null)
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    error!,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => configureCamera(true),
-                                    child: const Text('Retry'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        else if (c == null || !c.value.isInitialized)
-                          const Center(child: CircularProgressIndicator()),
-                        if (error == null) ...[
-                          IgnorePointer(
-                            child: CustomPaint(
-                              painter: _IdCardGuidePainter(guide, ready: ready),
-                            ),
-                          ),
-                          if (bothSides)
-                            Positioned(
-                              top: guide[1] - 40,
-                              left: 0,
-                              right: 0,
-                              child: Center(
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: Colors.black54,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 3,
-                                    ),
-                                    child: Text(
-                                      pages.isEmpty ? 'Front' : 'Back',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          Positioned(
-                            top: guide[1] + guide[3] + 16,
-                            left: 12,
-                            right: 12,
-                            child: Text(
-                              ready
-                                  ? 'Ready to preview'
-                                  : 'Scan the $side side of your ID',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ],
-                        Positioned(
-                          bottom: 6,
-                          left: 0,
-                          right: 0,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              for (final item in [
-                                (false, 'One Side'),
-                                (true, 'Both Sides'),
-                              ])
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 3,
-                                  ),
-                                  child: TextButton(
-                                    onPressed:
-                                        busy || (pages.length > 1 && !item.$1)
-                                        ? null
-                                        : () => setState(() {
-                                            bothSides = item.$1;
-                                            gate.reset();
-                                            if (pages.length < captureLimit)
-                                              automatic = true;
-                                          }),
-                                    style: TextButton.styleFrom(
-                                      backgroundColor: bothSides == item.$1
-                                          ? const Color(0xFF4B68FF)
-                                          : Colors.black54,
-                                      foregroundColor: Colors.white,
-                                      disabledForegroundColor: Colors.white38,
-                                      minimumSize: const Size(0, 24),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                      ),
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                      side: BorderSide(
-                                        color: bothSides == item.$1
-                                            ? Colors.transparent
-                                            : Colors.white,
-                                      ),
-                                      shape: const StadiumBorder(),
-                                    ),
-                                    child: Text(
-                                      item.$2,
-                                      style: const TextStyle(fontSize: 9),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(28, 14, 28, 28),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    IconButton(
-                      onPressed: busy || ready ? null : gallery,
-                      tooltip: 'Import ID image',
-                      icon: Icon(
-                        Icons.photo_library_outlined,
-                        color: ready ? Colors.white38 : Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                    Semantics(
-                      button: true,
-                      label: 'Capture ID $side',
-                      child: InkWell(
-                        onTap: busy || ready ? null : capture,
-                        customBorder: const CircleBorder(),
-                        child: Container(
-                          width: 60,
-                          height: 60,
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF4B68FF),
-                              width: 4,
-                            ),
-                          ),
-                          child: busy
-                              ? const CircularProgressIndicator()
-                              : DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: ready
-                                        ? const Color(0xFF303950)
-                                        : const Color(0xFF4B68FF),
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: busy || !ready ? null : finish,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (pages.isNotEmpty)
-                            Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Image.file(
-                                    File(pages.last),
-                                    width: 32,
-                                    height: 32,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                                Positioned(
-                                  right: -4,
-                                  top: -5,
-                                  child: CircleAvatar(
-                                    radius: 7,
-                                    backgroundColor: const Color(0xFF4B68FF),
-                                    child: Text(
-                                      '${pages.length}',
-                                      style: const TextStyle(
-                                        fontSize: 8,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            const Icon(
-                              Icons.credit_card,
-                              color: Colors.white38,
-                              size: 28,
-                            ),
-                          Icon(
-                            Icons.chevron_right,
-                            size: 30,
-                            color: ready ? Colors.white : Colors.white38,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    if (error != null) return Center(child: Padding(
+      padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+        AppText(error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white)),
+        TextButton(onPressed: () => configureCamera(true), child: const AppText('Retry')),
+      ])));
+    if (c == null || !c.value.isInitialized) return const Center(child: CircularProgressIndicator(color: scannerMint));
+    return LayoutBuilder(builder: (context, constraints) {
+      idViewport = constraints.biggest;
+      final width = c.value.previewSize!.height;
+      final height = c.value.previewSize!.width;
+      final zoom = math.max(constraints.maxWidth/width, constraints.maxHeight/height);
+      final left = (constraints.maxWidth-width*zoom)/2;
+      final top = (constraints.maxHeight-height*zoom)/2;
+      return GestureDetector(onTapDown: (details) => focus(Offset(
+        ((details.localPosition.dx-left)/(width*zoom)).clamp(0.0,1.0).toDouble(),
+        ((details.localPosition.dy-top)/(height*zoom)).clamp(0.0,1.0).toDouble())),
+        child: Stack(fit: StackFit.expand, children: [
+          ClipRect(child: SizedBox.expand(child: FittedBox(fit: BoxFit.cover,
+            child: SizedBox(width: width, height: height,
+              child: Stack(fit: StackFit.expand, children: [
+                CameraPreview(c),
+                IgnorePointer(child: CustomPaint(painter: EdgePainter(quad))),
+              ]))))),
+          if (widget.idCard && quad == null) IgnorePointer(child: CustomPaint(
+            painter: _IdCardGuidePainter(idCardGuide(constraints.maxWidth,constraints.maxHeight), ready: false))),
+        ]));
+    });
   }
 
   @override
-  Widget build(BuildContext context) {
-    final c = camera;
-    if (widget.idCard) return buildIdCamera();
-    return PopScope(
-      canPop: leaving,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) unawaited(close());
+  Widget build(BuildContext context) => PopScope(
+    canPop: leaving,
+    onPopInvokedWithResult: (didPop, result) { if (!didPop) unawaited(close()); },
+    child: ScannerCameraShell(
+      preview: livePreview(), kind: widget.idCard ? ScanKind.idCard : ScanKind.document,
+      status: busy ? 'Processing…' : widget.idCard && pages.length >= captureLimit ? 'ID card ready • tap Done' : gate.awaitingRemoval ? 'Move page away for the next scan'
+        : quad == null ? (widget.idCard ? (bothSides ? (pages.isEmpty ? 'Align ID card • front side' : 'Align ID card • back side') : 'Align the ID card') : 'Looking for document')
+        : sharpness < 35 ? 'Hold steady • tap to focus'
+        : widget.idCard
+          ? (automatic ? 'ID card detected • hold still' : 'ID card detected')
+          : automatic ? 'Document detected • hold still' : 'Document detected',
+      detected: quad != null, busy: busy, automatic: automatic,
+      enhance: enhance, torch: torch, batch: batchEnabled,
+      onClose: close,
+      onFlash: () async {
+        try {
+          await camera?.setFlashMode(torch ? FlashMode.off : FlashMode.torch);
+          if (mounted) setState(() => torch = !torch);
+        } catch (_) { notice('Flash is unavailable on this camera.'); }
       },
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0B101C),
-        body: SafeArea(
-          child: Column(
-            children: [
-              SizedBox(
-                height: 60,
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: busy ? null : close,
-                      tooltip: 'Close scanner',
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      tooltip: 'Toggle flash',
-                      onPressed: busy
-                          ? null
-                          : () async {
-                              try {
-                                await c?.setFlashMode(
-                                  torch ? FlashMode.off : FlashMode.torch,
-                                );
-                                if (mounted) setState(() => torch = !torch);
-                              } catch (_) {
-                                notice('Flash is unavailable on this camera.');
-                              }
-                            },
-                      icon: Icon(
-                        torch ? Icons.flash_on : Icons.flash_off,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Center(
-                  child: error != null
-                      ? Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                error!,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                              TextButton(
-                                onPressed: () => configureCamera(true),
-                                child: const Text('Retry'),
-                              ),
-                            ],
-                          ),
-                        )
-                      : c == null || !c.value.isInitialized
-                      ? const CircularProgressIndicator()
-                      : AspectRatio(
-                          aspectRatio: 1 / c.value.aspectRatio,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              CameraPreview(c),
-                              IgnorePointer(
-                                child: CustomPaint(painter: EdgePainter(quad)),
-                              ),
-                              Positioned(
-                                bottom: 12,
-                                left: 8,
-                                right: 8,
-                                child: Text(
-                                  gate.awaitingRemoval
-                                      ? 'Move the page away to scan the next one'
-                                      : quad == null
-                                      ? 'Place the full document inside the camera view'
-                                      : automatic
-                                      ? 'Hold still to capture'
-                                      : 'Tap the shutter to capture',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    backgroundColor: Colors.black54,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                ),
-              ),
-              Container(
-                color: const Color(0xFF191919),
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        IconButton(
-                          onPressed: busy ? null : gallery,
-                          tooltip: 'Import image',
-                          icon: const Icon(
-                            Icons.photo_library_outlined,
-                            color: Colors.white,
-                            size: 30,
-                          ),
-                        ),
-                        Semantics(
-                          button: true,
-                          label: 'Capture document',
-                          child: InkWell(
-                            onTap: busy ? null : capture,
-                            customBorder: const CircleBorder(),
-                            child: Container(
-                              width: 64,
-                              height: 64,
-                              padding: const EdgeInsets.all(5),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 4,
-                                ),
-                              ),
-                              child: busy
-                                  ? const CircularProgressIndicator(
-                                      color: Colors.white,
-                                    )
-                                  : const DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: busy || pages.isEmpty ? null : finish,
-                          child: Text(
-                            'Done (${pages.length})',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment(value: false, label: Text('Manual')),
-                        ButtonSegment(value: true, label: Text('Auto capture')),
-                      ],
-                      selected: {automatic},
-                      onSelectionChanged: busy
-                          ? null
-                          : (v) => setState(() {
-                              automatic = v.first;
-                              gate.reset();
-                            }),
-                      style: ButtonStyle(
-                        foregroundColor: WidgetStateProperty.all(Colors.white),
-                        backgroundColor: WidgetStateProperty.resolveWith(
-                          (s) => s.contains(WidgetState.selected)
-                              ? const Color(0xFF4B68FF)
-                              : Colors.white12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('Single'),
-                          selected: !batch,
-                          onSelected: busy
-                              ? null
-                              : (_) => setState(() => batch = false),
-                        ),
-                        const SizedBox(width: 12),
-                        ChoiceChip(
-                          label: const Text('Batch'),
-                          selected: batch,
-                          onSelected: busy
-                              ? null
-                              : (_) => setState(() => batch = true),
-                        ),
-                      ],
-                    ),
-                    if (pages.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          '${pages.length} page${pages.length == 1 ? '' : 's'} ready • Tap Done to review',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+      onAuto: () => setState(() { automatic = !automatic; gate.reset(clearRemoval: true); }),
+      onEnhance: () => setState(() => enhance = !enhance),
+      onBatch: (value) {
+        if (pages.isNotEmpty) { notice('Finish this scan before changing page mode.'); return; }
+        setState(() { if (widget.idCard) { bothSides=value; } else { batch=value; } });
+      },
+      onMode: widget.onModeChanged == null || pages.isNotEmpty ? null : changeMode,
+      onCapture: pages.length >= captureLimit ? null : capture,
+      onImages: pages.length >= captureLimit ? null : gallery,
+      onFiles: pages.length >= captureLimit ? null : importFiles,
+      onDone: widget.idCard && pages.length < captureLimit ? null : finish,
+      pageCount: pages.length,
+    ),
+  );
 }
 
 class EdgePainter extends CustomPainter {
@@ -942,14 +517,20 @@ class EdgePainter extends CustomPainter {
     for (final point in p.skip(1))
       path.lineTo(point.x * size.width, point.y * size.height);
     path.close();
-    canvas.drawPath(path, Paint()..color = const Color(0x334B68FF));
+    canvas.drawPath(path, Paint()..color = const Color(0x1A1FD1B4));
     canvas.drawPath(
       path,
       Paint()
-        ..color = const Color(0xFF4B68FF)
+        ..color = const Color(0xFF1FD1B4)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3,
+        ..strokeWidth = size.width / 156,
     );
+    for (final point in p) {
+      final center = Offset(point.x*size.width, point.y*size.height);
+      canvas.drawCircle(center, size.width/56, Paint()..color = Colors.white);
+      canvas.drawCircle(center, size.width/56, Paint()
+        ..color = scannerMint ..style = PaintingStyle.stroke ..strokeWidth = size.width/130);
+    }
   }
 
   @override
@@ -990,7 +571,7 @@ class _IdCardGuidePainter extends CustomPainter {
         band.topLeft,
         band.topRight,
         Paint()
-          ..color = const Color(0xFF4B68FF)
+          ..color = const Color(0xFF1FD1B4)
           ..strokeWidth = 3,
       );
     }

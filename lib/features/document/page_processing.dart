@@ -6,6 +6,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import 'edge_detector.dart';
+import 'scan_enhancement.dart';
+import 'perspective.dart';
 import 'editor_processing.dart';
 
 Uint8List processPage(Map<String, Object> request) {
@@ -28,7 +30,7 @@ Uint8List processPage(Map<String, Object> request) {
       List.generate(4, (i) => math.Point(supplied[i * 2], supplied[i * 2 + 1])),
     );
   } else if (request['detect'] == true) {
-    final tiny = img.copyResize(source, width: 240);
+    final tiny = img.copyResize(source, width: 480);
     final gray = Uint8List(tiny.width * tiny.height);
     for (var y = 0; y < tiny.height; y++) {
       for (var x = 0; x < tiny.width; x++) {
@@ -61,16 +63,9 @@ Uint8List processPage(Map<String, Object> request) {
         .round()
         .clamp(2, 2400)
         .toInt();
-    source = img.copyRectify(
-      source,
-      topLeft: q[0],
-      topRight: q[1],
-      bottomRight: q[2],
-      bottomLeft: q[3],
-      toImage: img.Image(width: width, height: height),
-      interpolation: img.Interpolation.linear,
-    );
+    source = rectifyDocument(source, quad, width, height);
   }
+  if (request['enhance'] == true) source = enhanceScan(source);
   final strokes = request['strokes'] as List<List<double>>?;
   if (strokes != null) {
     for (final stroke in strokes) {
