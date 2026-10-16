@@ -40,7 +40,6 @@ class _DocumentCameraState extends State<DocumentCamera>
   CameraController? camera;
   bool bothSides = false;
   bool get batchEnabled => widget.idCard ? bothSides : batch;
-  Size idViewport = Size.zero;
   int get captureLimit =>
       widget.idCard ? (bothSides ? 2 : 1) : widget.remaining;
   final pages = <String>[];
@@ -233,13 +232,6 @@ class _DocumentCameraState extends State<DocumentCamera>
       });
       if (detected != null && !validDocumentQuad(detected)) detected = null;
       if (!mounted || busy || !active || camera != current || leaving || epoch != detectionEpoch) return;
-      if (widget.idCard && detected != null) {
-        final points = detected.points.map((p) => math.Point(p.x*w,p.y*h)).toList();
-        final cardWidth = (points[0].distanceTo(points[1]) + points[3].distanceTo(points[2]))/2;
-        final cardHeight = (points[0].distanceTo(points[3]) + points[1].distanceTo(points[2]))/2;
-        final ratio = math.max(cardWidth,cardHeight) / math.max(1,math.min(cardWidth,cardHeight));
-        if (ratio < 1.2 || ratio > 2.1) detected = null;
-      }
       setState(() { quad = smoother.add(detected); sharpness = quality; });
       if (automatic &&
           pages.length < captureLimit &&
@@ -265,29 +257,23 @@ class _DocumentCameraState extends State<DocumentCamera>
       ).showSnackBar(SnackBar(content: AppText(value)));
   }
 
-  Future<void> append(Uint8List bytes, {bool fromCamera = false, String? sourcePath}) async {
+  Future<void> append(Uint8List bytes, {String? sourcePath}) async {
     if (pages.length >= captureLimit) return;
     DocumentQuad? stillQuad;
-    if (!widget.idCard && sourcePath != null) {
+    if (sourcePath != null) {
       try { stillQuad = await detector.detectFile(sourcePath); } catch (_) {
         // processPage will try the luminance detector before keeping the full photo.
       }
     }
-    var output = widget.idCard && fromCamera && !idViewport.isEmpty
-        ? await compute(processIdCardCapture, <String, Object>{
-            'bytes': bytes,
-            'width': idViewport.width,
-            'height': idViewport.height,
-            'detectCard': true,
-            'enhance': enhance,
-          })
-        : await compute(processPage, <String, Object>{
-            'bytes': bytes,
-            'detect': true,
-            if (stillQuad != null)
-              'corners': stillQuad.points.expand((p) => [p.x, p.y]).toList(),
-            'enhance': enhance,
-          });
+    // Documents and ID cards share still-image edge detection and perspective
+    // correction. Never substitute the fixed preview guide for detected edges.
+    var output = await compute(processPage, <String, Object>{
+      'bytes': bytes,
+      'detect': true,
+      if (stillQuad != null)
+        'corners': stillQuad.points.expand((p) => [p.x, p.y]).toList(),
+      'enhance': enhance,
+    });
     if (widget.idCard) output = await compute(orientIdCard, output);
     final path =
         '${widget.directory.path}/${DateTime.now().microsecondsSinceEpoch}_${pages.length}.jpg';
@@ -314,7 +300,7 @@ class _DocumentCameraState extends State<DocumentCamera>
       await frameIdle; // Finish native frame detection before still-image detection.
       final shot = await c.takePicture();
       try {
-        await append(await shot.readAsBytes(), fromCamera: true, sourcePath: shot.path);
+        await append(await shot.readAsBytes(), sourcePath: shot.path);
         captured = true;
       } finally {
         try {
@@ -514,7 +500,6 @@ class _DocumentCameraState extends State<DocumentCamera>
       ])));
     if (c == null || !c.value.isInitialized) return const Center(child: CircularProgressIndicator(color: scannerMint));
     return LayoutBuilder(builder: (context, constraints) {
-      idViewport = constraints.biggest;
       previewViewport = constraints.biggest;
       final width = math.min(c.value.previewSize!.width, c.value.previewSize!.height);
       final height = math.max(c.value.previewSize!.width, c.value.previewSize!.height);
