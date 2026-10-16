@@ -33,7 +33,7 @@ class NativeDocumentDetector {
       return null; // Unsupported frames never invent document edges.
     }
     return _quad(await _detector.detect(input,
-      sensitivity: native.DetectionSensitivity.strict), live: true);
+      sensitivity: native.DetectionSensitivity.balanced), live: true);
   }
 
   Future<DocumentQuad?> detectFile(String path) async => _quad(

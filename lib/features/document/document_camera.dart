@@ -36,7 +36,8 @@ class DocumentCamera extends StatefulWidget {
 }
 
 class _DocumentCameraState extends State<DocumentCamera>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  late final AnimationController scanAnimation;
   CameraController? camera;
   bool bothSides = false;
   bool get batchEnabled => widget.idCard ? bothSides : batch;
@@ -85,6 +86,9 @@ class _DocumentCameraState extends State<DocumentCamera>
   @override
   void initState() {
     super.initState();
+    scanAnimation = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1800));
+    if (widget.idCard) scanAnimation.repeat(reverse: true);
     WidgetsBinding.instance.addObserver(this);
     configureCamera(true);
   }
@@ -141,6 +145,13 @@ class _DocumentCameraState extends State<DocumentCamera>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     active = state == AppLifecycleState.resumed;
+    if (widget.idCard) {
+      if (active) {
+        scanAnimation.repeat(reverse: true);
+      } else {
+        scanAnimation.stop();
+      }
+    }
     invalidateDetection();
     if (!busy) configureCamera(active);
   }
@@ -148,6 +159,7 @@ class _DocumentCameraState extends State<DocumentCamera>
   @override
   void dispose() {
     leaving = true;
+    scanAnimation.dispose();
     WidgetsBinding.instance.removeObserver(this);
     unawaited(
       cameraTask.then((_) async {
@@ -209,7 +221,18 @@ class _DocumentCameraState extends State<DocumentCamera>
         }
       }
       final quality = frameSharpness(gray, w, h);
-      var detected = await detector.detectFrame(frame, rotation);
+      DocumentQuad? detected;
+      try {
+        detected = await detector.detectFrame(frame, rotation);
+      } catch (error) {
+        debugPrint('Native edge detection failed; using luminance fallback: $error');
+      }
+      if (!mounted || busy || !active || camera != current || leaving || epoch != detectionEpoch) return;
+      // Also handles camera formats unsupported by the native adapter.
+      detected ??= await compute(detectDocument, <String, Object>{
+        'gray': gray, 'width': w, 'height': h,
+      });
+      if (detected != null && !validDocumentQuad(detected)) detected = null;
       if (!mounted || busy || !active || camera != current || leaving || epoch != detectionEpoch) return;
       if (widget.idCard && detected != null) {
         final points = detected.points.map((p) => math.Point(p.x*w,p.y*h)).toList();
@@ -248,7 +271,7 @@ class _DocumentCameraState extends State<DocumentCamera>
     DocumentQuad? stillQuad;
     if (!widget.idCard && sourcePath != null) {
       try { stillQuad = await detector.detectFile(sourcePath); } catch (_) {
-        // Keep the full photograph for the existing manual corner editor.
+        // processPage will try the luminance detector before keeping the full photo.
       }
     }
     var output = widget.idCard && fromCamera && !idViewport.isEmpty
@@ -261,7 +284,7 @@ class _DocumentCameraState extends State<DocumentCamera>
           })
         : await compute(processPage, <String, Object>{
             'bytes': bytes,
-            'detect': widget.idCard,
+            'detect': true,
             if (stillQuad != null)
               'corners': stillQuad.points.expand((p) => [p.x, p.y]).toList(),
             'enhance': enhance,
@@ -510,8 +533,10 @@ class _DocumentCameraState extends State<DocumentCamera>
                 CameraPreview(c),
                 IgnorePointer(child: CustomPaint(painter: EdgePainter(quad))),
               ]))))),
-          if (widget.idCard && quad == null) IgnorePointer(child: CustomPaint(
-            painter: _IdCardGuidePainter(idCardGuide(constraints.maxWidth,constraints.maxHeight), ready: false))),
+          if (widget.idCard && quad == null && !busy) IgnorePointer(child: CustomPaint(
+            painter: _IdCardGuidePainter(
+              idCardGuide(constraints.maxWidth, constraints.maxHeight),
+              progress: scanAnimation))),
         ]));
     });
   }
@@ -585,9 +610,10 @@ class EdgePainter extends CustomPainter {
 }
 
 class _IdCardGuidePainter extends CustomPainter {
-  _IdCardGuidePainter(this.guide, {required this.ready});
+  _IdCardGuidePainter(this.guide, {required this.progress})
+      : super(repaint: progress);
   final List<double> guide;
-  final bool ready;
+  final Animation<double> progress;
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(guide[0], guide[1], guide[2], guide[3]);
@@ -606,22 +632,19 @@ class _IdCardGuidePainter extends CustomPainter {
       canvas.drawLine(corner, corner + Offset(dx, 0), outline);
       canvas.drawLine(corner, corner + Offset(0, dy), outline);
     }
-    if (!ready) {
-      final band = Rect.fromLTWH(
-        rect.left,
-        rect.center.dy,
-        rect.width,
-        rect.height * .42,
-      );
-      canvas.drawRect(band, Paint()..color = const Color(0x554B68FF));
-      canvas.drawLine(
-        band.topLeft,
-        band.topRight,
-        Paint()
-          ..color = const Color(0xFF1FD1B4)
-          ..strokeWidth = 3,
-      );
-    }
+    final y = rect.top + rect.height * progress.value;
+    final band = Rect.fromLTWH(
+      rect.left, y, rect.width, rect.height * .22);
+    canvas.save();
+    canvas.clipRect(rect);
+    canvas.drawRect(band, Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        colors: [Color(0x664B68FF), Color(0x004B68FF)],
+      ).createShader(band));
+    canvas.drawLine(Offset(rect.left, y), Offset(rect.right, y),
+      Paint()..color = scannerMint..strokeWidth = 3);
+    canvas.restore();
   }
 
   @override
