@@ -100,7 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     animation: AppPreferences.instance,
     builder: (_, child) {
       final prefs = AppPreferences.instance;
-      final language = _languages.firstWhere((l) => l.$1 == prefs.language).$4;
+      final language = appLanguageOptions.firstWhere((l) => l.$1 == prefs.language).$4;
       return _SettingsShell(
         brand: true, showNavigation: false, onScan: widget.onScan,
         child: ListView(
