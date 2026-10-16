@@ -119,7 +119,7 @@ void main() {
     expect(find.byType(SplashScreen), findsOneWidget);
     expect(find.byType(HomeScreen), findsNothing);
     await tester.pump(const Duration(seconds: 1));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.byType(HomeScreen), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     preferences.dispose();
