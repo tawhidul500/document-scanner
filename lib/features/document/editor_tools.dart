@@ -159,7 +159,7 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
         ),
       ),
       SizedBox(
-        height: 92,
+        height: 112,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
