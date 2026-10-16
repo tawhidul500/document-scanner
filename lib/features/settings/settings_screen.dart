@@ -103,7 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final prefs = AppPreferences.instance;
       final language = appLanguageOptions.firstWhere((l) => l.$1 == prefs.language).$4;
       return _SettingsShell(
-        brand: true, showNavigation: false, onScan: widget.onScan,
+        brand: true, onScan: widget.onScan,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(15, 25, 15, 28),
           children: [
@@ -116,7 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _row('theme', 'Theme', 'Appearance of the app',
                 value: themeModeLabel(prefs.themeMode),
                 onTap: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => const ThemeScreen()))),
+                  builder: (_) => ThemeScreen(onScan: widget.onScan)))),
               _row('vibration', 'Vibration', 'Vibrate during scanning',
                 trailing: _ReferenceSwitch(value: prefs.vibration,
                   label: context.tr('Vibration'),
@@ -228,7 +228,8 @@ String themeModeLabel(ThemeMode mode) => switch (mode) {
 };
 
 class ThemeScreen extends StatefulWidget {
-  const ThemeScreen({super.key, this.preferences});
+  const ThemeScreen({super.key, this.preferences, this.onScan});
+  final VoidCallback? onScan;
   final AppPreferences? preferences;
   @override
   State<ThemeScreen> createState() => _ThemeScreenState();
@@ -255,7 +256,7 @@ class _ThemeScreenState extends State<ThemeScreen> {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: preferences,
     builder: (context, _) => _SettingsShell(
-      title: context.tr('Theme'), showNavigation: false,
+      title: context.tr('Theme'), onScan: widget.onScan,
       child: ListView(padding: const EdgeInsets.fromLTRB(10, 30, 19, 24),
         children: [
           Container(
