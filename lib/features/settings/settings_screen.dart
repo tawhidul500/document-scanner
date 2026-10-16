@@ -208,7 +208,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ])),
           if (value != null) ...[
             const SizedBox(width: 8),
-            Flexible(child: AppText(context.tr(value), textAlign: TextAlign.end,
+            Flexible(fit: FlexFit.tight,
+              child: AppText(context.tr(value), textAlign: TextAlign.end,
               style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 14))),
           ],
           const SizedBox(width: 10),
@@ -716,7 +717,7 @@ class _SettingsShell extends StatelessWidget {
           leading: brand ? null : IconButton(
             tooltip: MaterialLocalizations.of(context).backButtonTooltip,
             onPressed: () => Navigator.maybePop(context),
-            icon: Image.asset('assets/theme/back.png', width: 22, height: 18, matchTextDirection: true)),
+            icon: const Icon(Icons.arrow_back, color: Colors.white)),
           title: brand
               ? Row(
                   children: [
@@ -729,13 +730,14 @@ class _SettingsShell extends StatelessWidget {
                           AppText(
                             'Document Scanner',
                             style: TextStyle(
+                              color: Colors.white,
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                           AppText(
                             'Scan • Save • Share',
-                            style: TextStyle(fontSize: 15),
+                            style: TextStyle(color: Colors.white, fontSize: 15),
                           ),
                         ],
                       ),
@@ -745,6 +747,7 @@ class _SettingsShell extends StatelessWidget {
               : AppText(
                   title!,
                   style: const TextStyle(
+                    color: Colors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
                   ),

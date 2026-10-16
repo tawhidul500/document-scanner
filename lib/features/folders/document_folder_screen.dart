@@ -422,7 +422,7 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
               selecting
                   ? context.tr(count == 0 ? 'Select items' : '{count} Selected', {'count': count})
                   : folders.names[current] ?? context.tr(widget.kind.label),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
             ),
             actions: selecting
                 ? [

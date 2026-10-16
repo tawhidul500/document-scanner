@@ -411,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Padding(
             padding: EdgeInsets.only(
-              bottom: 74 +
+              bottom: 82 +
                 (MediaQuery.textScalerOf(context).scale(13) - 13).clamp(0.0, 40.0) +
                 MediaQuery.paddingOf(context).bottom),
             child: Column(
@@ -447,7 +447,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     top: Radius.circular(22),
                   ),
                   child: ColoredBox(
-                    color: AppPalette.of(context).background,
+                    color: AppPalette.of(context).surface,
                     child: AnimatedBuilder(
                       animation: store,
                       builder: (context, _) => CustomScrollView(
@@ -504,12 +504,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const SectionTitle('My Documents'),
-                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 8),
                                   Row(
                                     children: [
                                       for (final kind in ScanKind.values) ...[
                                         if (kind.index > 0)
-                                          const SizedBox(width: 8),
+                                          const SizedBox(width: 6),
                                         Expanded(
                                           child: CategoryTile(
                                             kind: kind,
@@ -593,12 +593,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                     : store.files.length,
                               ),
                             ),
-                          SliverToBoxAdapter(
-                            child: ColoredBox(
-                              color: AppPalette.of(context).surface,
-                              child: SizedBox(height: 32),
+                          if (store.files.isNotEmpty)
+                            SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: ColoredBox(
+                                color: AppPalette.of(context).surface,
+                                child: const SizedBox(height: 32),
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -677,16 +679,16 @@ class CategoryTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 14),
+          padding: EdgeInsets.symmetric(horizontal: 3, vertical: folder ? 12 : 14),
           child: Column(children: [
             Image.asset('assets/home/${folder ? 'folder_' : ''}${kind.name}.png',
               width: 46, height: 46, fit: BoxFit.contain, excludeFromSemantics: true),
-            const SizedBox(height: 10),
+            SizedBox(height: folder ? 8 : 10),
             AppText(kind.label, textAlign: TextAlign.center,
               style: TextStyle(fontSize: 15, height: 1.3,
                 fontWeight: FontWeight.w700, color: AppPalette.of(context).text)),
             if (folder) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               AppText(count == 1 ? '{count} file' : '{count} files',
                 arguments: {'count': count}, textAlign: TextAlign.center,
                 style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 14)),
@@ -1299,7 +1301,7 @@ class _RecentFilesScreenState extends State<RecentFilesScreen> {
               title: AppText(
                 selecting ? (count == 0 ? 'Select items' : '{count} Selected') : 'Recent Files',
                 arguments: {'count': count},
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
               ),
               actions: selecting ? [
                 TextButton(

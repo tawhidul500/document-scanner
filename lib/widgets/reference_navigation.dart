@@ -18,11 +18,11 @@ class ReferenceHomeNavigation extends StatelessWidget {
     final bottom = MediaQuery.paddingOf(context).bottom;
     final extra = (MediaQuery.textScalerOf(context).scale(13) - 13).clamp(0.0, 40.0);
     return SizedBox(
-      height: 100 + bottom + extra,
+      height: 108 + bottom + extra,
       child: Stack(children: [
         Positioned.fill(child: CustomPaint(
           key: const ValueKey('navigation-surface'),
-          painter: NavigationSurfacePainter(p.surface, p.dark, p.background),
+          painter: NavigationSurfacePainter(p.surface, p.dark, p.surface),
         )),
         PositionedDirectional(start: 0, top: 36, bottom: bottom + 4,
           width: MediaQuery.sizeOf(context).width * .44,
