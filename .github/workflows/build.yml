@@ -43,6 +43,13 @@ jobs:
       - name: Check localization and color contrast
         run: python3 -m unittest discover -s tool -p 'test_*.py' -v
 
+      - name: Diagnose test failures (annotations)
+        continue-on-error: true
+        run: |
+          python3 tool/setup.py --org com.example --skip-checks
+          flutter pub get
+          flutter test --reporter github --timeout 2m
+
       - name: Analyze, test, and build Android APK
         run: python3 tool/build.py apk
 
