@@ -40,6 +40,14 @@ class AppThemes {
   static final light = _build(false);
   static final dark = _build(true);
 
+  // A plain ThemeData().textTheme has no font sizes yet, so fontSizeDelta
+  // would assert. Merge the Material size geometry in first.
+  static TextTheme _baseTextTheme(bool dark) {
+    final typography = Typography.material2021(platform: TargetPlatform.android);
+    return typography.englishLike.merge(
+        dark ? typography.white : typography.black);
+  }
+
   static ThemeData _build(bool dark) {
     final p = AppPalette(dark);
     final brightness = dark ? Brightness.dark : Brightness.light;
@@ -64,7 +72,7 @@ class AppThemes {
       disabledColor: p.disabled,
       textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(
         foregroundColor: p.primary, disabledForegroundColor: p.disabled)),
-      textTheme: ThemeData(brightness: brightness).textTheme.apply(
+      textTheme: _baseTextTheme(dark).apply(
         fontFamily: 'Inter', bodyColor: p.text, displayColor: p.text,
         fontSizeDelta: 2),
       iconTheme: IconThemeData(color: p.text),
