@@ -13,6 +13,7 @@ import 'package:pdf_scanner/data/document_store.dart';
 import 'package:pdf_scanner/data/document_folders.dart';
 import 'package:pdf_scanner/features/document/document_editor.dart';
 import 'package:pdf_scanner/features/document/document_review.dart';
+import 'package:pdf_scanner/features/folders/document_folder_screen.dart';
 import 'package:pdf_scanner/features/home/home_screen.dart';
 
 void main() {
@@ -128,9 +129,11 @@ void main() {
           Future<void>.delayed(const Duration(milliseconds: 20)));
       await tester.pump();
     }
-    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.tap(find.descendant(of: find.byType(DocumentEditor),
+        matching: find.byIcon(Icons.arrow_back)));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.tap(find.descendant(of: find.byType(DocumentReview),
+        matching: find.byIcon(Icons.arrow_back)));
     await waitFor(tester, find.text('Imported.pdf'));
     await tester.runAsync(() async {
       expect(await review.directory.exists(), isFalse);
@@ -141,7 +144,8 @@ void main() {
     await waitFor(tester, find.byType(DocumentReview));
     expect(find.text('Edit'), findsOneWidget);
     expect(store.files, hasLength(1));
-    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.tap(find.descendant(of: find.byType(DocumentReview),
+        matching: find.byIcon(Icons.arrow_back)));
     await waitFor(tester, find.text('Imported.pdf'));
     expect(tester.takeException(), isNull);
   });
@@ -175,10 +179,14 @@ void main() {
           await tester.tap(find.text('Archive'));
           await tester.pumpAndSettle();
         }
-        label = original.name;
+        label = textFile ? original.name : original.filename;
       }
-      await waitFor(tester, find.text(label));
-      await tester.tap(find.text(label));
+      final fileList = find.byType(kind == ScanKind.qr
+          ? RecentFilesScreen
+          : kind == ScanKind.document ? HomeScreen : DocumentFolderScreen);
+      final fileLabel = find.descendant(of: fileList, matching: find.text(label));
+      await waitFor(tester, fileLabel);
+      await tester.tap(fileLabel);
       await waitFor(tester, find.text('Open document actions'));
       for (final action in ['Preview', 'Print', 'Share', 'Export']) {
         expect(find.descendant(of: find.byType(BottomSheet),
@@ -196,8 +204,9 @@ void main() {
       await tester.runAsync(() async {
         expect(await store.fileFor(original).readAsBytes(), orderedEquals(content));
       });
-      await tester.tap(find.byIcon(Icons.arrow_back));
-      await waitFor(tester, find.text(label));
+      await tester.tap(find.descendant(of: find.byType(DocumentReview),
+          matching: find.byIcon(Icons.arrow_back)));
+      await waitFor(tester, fileLabel);
       await tester.runAsync(() async {
         expect(await review.directory.exists(), isFalse);
       });

@@ -114,12 +114,20 @@ void main() {
           child: LanguageSetupScreen(preferences: preferences),
         )),
       ));
-      await tester.ensureVisible(find.byKey(const ValueKey('first-language-ar')));
+      final languageList = find.descendant(
+          of: find.byKey(const ValueKey('first-launch-languages')),
+          matching: find.byType(Scrollable));
+      await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('first-language-ar')), 180,
+          scrollable: languageList);
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('first-language-ar')));
       await tester.pumpAndSettle();
       expect(Directionality.of(tester.element(next)), TextDirection.rtl);
       expect(tester.getRect(next).bottom, lessThanOrEqualTo(568));
-      await tester.ensureVisible(find.byKey(const ValueKey('first-language-pt')));
+      await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('first-language-pt')), 180,
+          scrollable: languageList);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());

@@ -68,7 +68,8 @@ void main() {
           final rich = find.descendant(of: find.text(pair.$2), matching: find.byType(RichText));
           final paragraph = tester.renderObject<RenderParagraph>(rich);
           final actual = paragraph.localToGlobal(Offset(0,
-            paragraph.getDistanceToBaseline(TextBaseline.alphabetic)!)).dy;
+            paragraph.getDryBaseline(paragraph.constraints,
+                TextBaseline.alphabetic)!)).dy;
           expect(actual, closeTo(baseline + (pair.$1 == 'Title' ? 0 : 22), .01));
         }
         expect(tester.takeException(), isNull);

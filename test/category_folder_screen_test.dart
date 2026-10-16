@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pdf_scanner/data/document_folders.dart';
 import 'package:pdf_scanner/data/document_store.dart';
 import 'package:pdf_scanner/features/folders/document_folder_screen.dart';
+import 'package:pdf_scanner/widgets/app_toolbar_action.dart';
+import 'support/pump_until.dart';
 
 void main() {
   for (final kind in ScanKind.values) {
@@ -53,24 +55,15 @@ void main() {
             ),
           );
 
-          await tester.runAsync(() async {
-            await Future<void>.delayed(
-              const Duration(milliseconds: 50),
-            );
-          });
+          await pumpUntil(tester, () => find.text('First').evaluate().isNotEmpty,
+              reason: 'the category folder to finish loading');
           await tester.pumpAndSettle();
 
           expect(find.text(kind.label), findsOneWidget);
           expect(find.text('Other category'), findsNothing);
 
-          expect(
-            tester
-                .widget<TextButton>(
-                  find.widgetWithText(TextButton, 'Move'),
-                )
-                .onPressed,
-            isNull,
-          );
+          // The action toolbar appears only after entering selection mode.
+          expect(find.byType(AppToolbarAction), findsNothing);
 
           await tester.longPress(find.text('First'));
           await tester.pumpAndSettle();
@@ -83,6 +76,11 @@ void main() {
           await tester.tap(find.text('Deselect all'));
           await tester.pumpAndSettle();
           expect(find.text('Select items'), findsOneWidget);
+
+          expect(
+            tester.widget<TextButton>(find.widgetWithText(TextButton, 'Move')).onPressed,
+            isNull,
+          );
 
           expect(
             tester

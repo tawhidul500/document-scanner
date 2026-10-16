@@ -118,7 +118,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('language-bn')));
     await waitFor(tester, find.text(AppStrings.translate('Choose App Language', 'bn')));
-    await tester.pageBack();
+    final backLabel = MaterialLocalizations.of(tester.element(
+        find.byKey(const ValueKey('language-bn')))).backButtonTooltip;
+    await tester.tap(find.byTooltip(backLabel));
     await tester.pumpAndSettle();
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();

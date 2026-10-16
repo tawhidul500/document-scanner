@@ -8,6 +8,7 @@ import 'package:pdf_scanner/main.dart';
 import 'package:pdf_scanner/theme/app_theme.dart';
 import 'package:pdf_scanner/widgets/reference_navigation.dart';
 import 'package:pdf_scanner/widgets/reference_toolbar_surface.dart';
+import 'support/pump_until.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -92,8 +93,10 @@ void main() {
     await tester.pumpWidget(ScannerApp(preferences: preferences,
       home: ThemeScreen(preferences: preferences)));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('theme-dark')));
     await tester.tap(find.byKey(const ValueKey('theme-dark')));
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await pumpUntil(tester, () => preferences.themeMode == ThemeMode.dark,
+        reason: 'the dark theme preference to be saved');
     await tester.pumpAndSettle();
     expect(preferences.themeMode, ThemeMode.dark);
     final context = tester.element(find.byKey(const ValueKey('theme-dark')));

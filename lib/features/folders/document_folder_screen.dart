@@ -470,7 +470,8 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
                 color: AppPalette.of(context).background,
                 child: Column(
                   children: [
-                    if (busy) const LinearProgressIndicator(),
+                    if (busy && (ModalRoute.of(context)?.isCurrent ?? true))
+                      const LinearProgressIndicator(),
                     if (searching)
                       Padding(
                         padding: const EdgeInsets.all(12),

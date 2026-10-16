@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pdf_scanner/data/document_folders.dart';
 import 'package:pdf_scanner/data/document_store.dart';
 import 'package:pdf_scanner/features/home/home_screen.dart';
+import 'support/pump_until.dart';
 
 Future<DocumentStore> mountRecent(WidgetTester tester, {VoidCallback? onOpen}) async {
   tester.view.devicePixelRatio = 1;
@@ -37,11 +38,6 @@ Future<DocumentStore> mountRecent(WidgetTester tester, {VoidCallback? onOpen}) a
 
 TextButton action(WidgetTester tester, String label) =>
     tester.widget<TextButton>(find.byKey(ValueKey('recent-action-' + label)));
-
-Future<void> drainFileOperations(WidgetTester tester) async {
-  await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 150)));
-  await tester.pumpAndSettle();
-}
 
 void main() {
   testWidgets('long press and row taps select without opening files', (tester) async {
@@ -154,7 +150,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('recent-action-delete')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ok'));
-    await drainFileOperations(tester);
+    await pumpUntil(tester,
+        () => store.files.isEmpty && find.text('Recent Files').evaluate().isNotEmpty,
+        reason: 'bulk deletion and folder cleanup to finish');
+    await tester.pumpAndSettle();
     expect(store.files, isEmpty);
     final folders = DocumentFolders(store);
     await tester.runAsync(folders.load);
@@ -173,9 +172,13 @@ void main() {
     await tester.tap(find.text('Select all'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('recent-action-move')));
-    await drainFileOperations(tester);
+    await pumpUntil(tester, () => find.text('Archive').evaluate().isNotEmpty,
+        reason: 'the destination folder list to load');
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Archive'));
-    await drainFileOperations(tester);
+    await pumpUntil(tester, () => find.text('Recent Files').evaluate().isNotEmpty,
+        reason: 'the selected files to move');
+    await tester.pumpAndSettle();
     final folders = DocumentFolders(store);
     await tester.runAsync(folders.load);
     final id = folders.names.keys.single;
@@ -198,7 +201,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField), 'Merged Recent');
     await tester.tap(find.text('Ok'));
-    await drainFileOperations(tester);
+    await pumpUntil(tester,
+        () => store.files.any((file) => file.name == 'Merged Recent') &&
+            find.text('Recent Files').evaluate().isNotEmpty,
+        reason: 'the merged PDF to be saved');
+    await tester.pumpAndSettle();
     expect(store.files, hasLength(4));
     final merged = store.files.singleWhere((file) => file.name == 'Merged Recent');
     expect(merged.extension, 'pdf');

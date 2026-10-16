@@ -632,7 +632,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 MaterialPageRoute(builder: (_) => SettingsScreen(onScan: chooseScan))),
             ),
           ),
-          if (busy)
+          if (busy && (ModalRoute.of(context)?.isCurrent ?? true))
             const Positioned.fill(
               child: AbsorbPointer(
                 child: ColoredBox(
@@ -846,11 +846,13 @@ class FileRow extends StatelessWidget {
                                   color: AppPalette.of(context).text,
                                 ),
                                 const SizedBox(width: 12),
-                                AppText(
-                                  entry.key,
-                                  style: TextStyle(
-                                    color: AppPalette.of(context).text,
-                                    fontSize: 13,
+                                Flexible(
+                                  child: AppText(
+                                    entry.key,
+                                    style: TextStyle(
+                                      color: AppPalette.of(context).text,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1408,7 +1410,8 @@ class _RecentFilesScreenState extends State<RecentFilesScreen> {
                         ),
                       ),
                     ),
-                    if (busy) const LinearProgressIndicator(minHeight: 2),
+                    if (busy && (ModalRoute.of(context)?.isCurrent ?? true))
+                      const LinearProgressIndicator(minHeight: 2),
                     Expanded(child: files.isEmpty
                         ? EmptyFiles(search: query.trim().isNotEmpty)
                         : AbsorbPointer(
