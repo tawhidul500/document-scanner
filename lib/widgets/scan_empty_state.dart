@@ -16,13 +16,13 @@ class ScanEmptyState extends StatelessWidget {
       const SizedBox(height: 7),
       AppText(title ?? (search ? 'No matching files' : 'No files here yet'),
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 17, height: 24 / 17,
+        style: TextStyle(fontSize: 19, height: 24 / 17,
           fontWeight: FontWeight.w700, color: AppPalette.of(context).text)),
       const SizedBox(height: 1),
       AppText(message ?? (search ? 'Try another file name.' :
         'Tap the camera button below to scan\nyour first document.'),
         textAlign: TextAlign.center,
-        style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 13, height: 18 / 13)),
+        style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 15, height: 18 / 13)),
     ],
   );
 }

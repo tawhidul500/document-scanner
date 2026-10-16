@@ -132,7 +132,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
           widget.name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         actions: [
           TextButton(
@@ -144,7 +144,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
                   ),
             child: AppText(
               'Done',
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 18),
             ),
           ),
         ],

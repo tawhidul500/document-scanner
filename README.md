@@ -28,6 +28,10 @@ and signing key; an APK from a fresh CI runner may have a different development 
 
 ## Included in this update
 
+- Native document edge detection with the existing camera UI, smoothed live corners,
+  stable auto-capture, and separate still-photo detection. See `NATIVE_DOCUMENT_DETECTION.md`
+  for build status and device validation requirements.
+
 - First launch: select a language, then tap Next to save it and open Home. Later launches
   use the saved choice. Existing valid language preferences are retained.
 - App text in nine languages, including Arabic right-to-left layout.

@@ -364,14 +364,14 @@ class _DocumentReviewState extends State<DocumentReview> {
           document.name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         actions: [
           TextButton(
             onPressed: busy ? null : showOptions,
             child: AppText(
               'Option',
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 18),
             ),
           ),
         ],

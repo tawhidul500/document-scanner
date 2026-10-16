@@ -411,47 +411,34 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Padding(
             padding: EdgeInsets.only(
-              bottom: 67 * MediaQuery.sizeOf(context).width / 375 +
+              bottom: 74 +
+                (MediaQuery.textScalerOf(context).scale(13) - 13).clamp(0.0, 40.0) +
                 MediaQuery.paddingOf(context).bottom),
             child: Column(
             children: [
               SafeArea(
                 bottom: false,
-                child: SizedBox(
-                  height: 58,
-                  child: context.englishLayout ? Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.asset(themedAsset(context, 'assets/home/exact_masthead.png'),
-                        fit: BoxFit.fill, excludeFromSemantics: true),
-                      Semantics(label: context.tr('Document Scanner. Scan, Save, Share')),
-                      Positioned(right: 8, top: 0, bottom: 0, width: 48,
-                        child: Tooltip(message: context.tr('Search files'),
-                          child: Semantics(button: true, label: context.tr('Search files'),
-                            child: InkWell(onTap: busy ? null : () => browse(search: true))))),
-                    ],
-                  ) : Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: Row(children: [
-                      Image.asset('assets/home/brand.png', width: 39,
-                          excludeFromSemantics: true),
-                      const SizedBox(width: 10),
-                      const Expanded(child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AppText('Document Scanner', maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: Colors.white, fontSize: 18,
-                              fontWeight: FontWeight.w600)),
-                          AppText('Scan • Save • Share', maxLines: 1,
-                            style: TextStyle(color: Colors.white, fontSize: 11)),
-                        ])),
-                      IconButton(tooltip: context.tr('Search files'),
-                        onPressed: busy ? null : () => browse(search: true),
-                        icon: const Icon(Icons.search, color: Colors.white)),
-                    ]),
-                  ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 8, 18),
+                  child: Row(children: [
+                    Image.asset('assets/home/brand.png', width: 48, height: 48,
+                      fit: BoxFit.contain, excludeFromSemantics: true),
+                    const SizedBox(width: 12),
+                    const Expanded(child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppText('Document Scanner',
+                          style: TextStyle(color: Colors.white, fontSize: 22,
+                            fontWeight: FontWeight.w700)),
+                        SizedBox(height: 4),
+                        AppText('Scan • Save • Share',
+                          style: TextStyle(color: Colors.white, fontSize: 16)),
+                      ])),
+                    IconButton(tooltip: context.tr('Search files'),
+                      onPressed: busy ? null : () => browse(search: true),
+                      icon: const Icon(Icons.search, color: Colors.white, size: 28)),
+                  ]),
                 ),
               ),
               Expanded(
@@ -543,7 +530,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           SliverToBoxAdapter(
                             child: Container(
-                              height: 39,
+                              constraints: const BoxConstraints(minHeight: 56),
                               padding: const EdgeInsets.fromLTRB(15, 16, 5, 0),
                               decoration: BoxDecoration(
                                 color: AppPalette.of(context).surface,
@@ -561,7 +548,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     child: AppText(
                                       'See all',
                                       style: TextStyle(
-                                        fontSize: 13,
+                                        fontSize: 15,
                                         color: AppPalette.of(context).primary,
                                       ),
                                     ),
@@ -609,7 +596,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           SliverToBoxAdapter(
                             child: ColoredBox(
                               color: AppPalette.of(context).surface,
-                              child: SizedBox(height: 116),
+                              child: SizedBox(height: 32),
                             ),
                           ),
                         ],
@@ -655,9 +642,9 @@ class SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => AppText(
     text,
     style: TextStyle(
-      fontSize: 18,
+      fontSize: 20,
       height: 1.3,
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w700,
       color: AppPalette.of(context).text,
     ),
   );
@@ -681,39 +668,29 @@ class CategoryTile extends StatelessWidget {
     label: folder
         ? context.tr('{type}, {count} files', {'type': context.tr(kind.label), 'count': count})
         : context.tr('Scan {type}', {'type': context.tr(kind.label)}),
-    child: AspectRatio(
-      aspectRatio: context.englishLayout ? (folder ? 83 / 93 : 82 / 94)
-          : 83 / (112 + (MediaQuery.textScalerOf(context).scale(10) - 10).clamp(0, 40) * 4),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Stack(fit: StackFit.expand, children: [
-            if (context.englishLayout) Ink.image(
-              image: AssetImage(themedAsset(context, 'assets/home/exact_${folder ? 'tile' : 'scan'}_${kind.name}.png')),
-              fit: BoxFit.fill,
-            ) else ...[
-              DecoratedBox(decoration: BoxDecoration(
-                color: AppPalette.of(context).dark
-                    ? AppPalette.of(context).selected : tileColors[kind.index],
-                borderRadius: BorderRadius.circular(14))),
-              Positioned(top: folder ? 12 : 10, left: 0, right: 0,
-                child: Center(child: Image.asset(
-                  'assets/home/${folder ? 'folder_' : ''}${kind.name}.png',
-                  width: folder ? 40 : 36, height: 34,
-                  excludeFromSemantics: true))),
-              Positioned(left: 3, right: 3, top: folder ? 47 : 51,
-                child: AppText(kind.label, textAlign: TextAlign.center,
-                  maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 10, height: 1.2,
-                    fontWeight: FontWeight.w600, color: AppPalette.of(context).text))),
+    child: Material(
+      color: folder ? AppPalette.of(context).surface
+          : AppPalette.of(context).dark ? AppPalette.of(context).selected : tileColors[kind.index],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: AppPalette.of(context).outline)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 14),
+          child: Column(children: [
+            Image.asset('assets/home/${folder ? 'folder_' : ''}${kind.name}.png',
+              width: 46, height: 46, fit: BoxFit.contain, excludeFromSemantics: true),
+            const SizedBox(height: 10),
+            AppText(kind.label, textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 15, height: 1.3,
+                fontWeight: FontWeight.w700, color: AppPalette.of(context).text)),
+            if (folder) ...[
+              const SizedBox(height: 8),
+              AppText(count == 1 ? '{count} file' : '{count} files',
+                arguments: {'count': count}, textAlign: TextAlign.center,
+                style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 14)),
             ],
-            if (folder) Positioned(left: 0, right: 0, bottom: 10,
-              child: AppText(count == 1 ? '{count} file' : '{count} files',
-                arguments: {'count': count},
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 9, height: 1))),
           ]),
         ),
       ),
@@ -792,7 +769,7 @@ class FileRow extends StatelessWidget {
                                   : document.filename,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: AppPalette.of(context).text, fontSize: 13),
+                              style: TextStyle(color: AppPalette.of(context).text, fontSize: 15),
                             ),
                             const SizedBox(height: 3),
                             AppText(
@@ -801,7 +778,7 @@ class FileRow extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: AppPalette.of(context).secondary,
-                                fontSize: 11,
+                                fontSize: 13,
                               ),
                             ),
                           ],
@@ -851,7 +828,7 @@ class FileRow extends StatelessWidget {
                                     entry.key,
                                     style: TextStyle(
                                       color: AppPalette.of(context).text,
-                                      fontSize: 13,
+                                      fontSize: 15,
                                     ),
                                   ),
                                 ),
@@ -1263,7 +1240,7 @@ class _RecentFilesScreenState extends State<RecentFilesScreen> {
             ? Colors.transparent : AppPalette.of(context).outline),
       ),
       child: AppText(kind?.label ?? 'All', maxLines: 1,
-        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
     ),
   );
 
@@ -1322,7 +1299,7 @@ class _RecentFilesScreenState extends State<RecentFilesScreen> {
               title: AppText(
                 selecting ? (count == 0 ? 'Select items' : '{count} Selected') : 'Recent Files',
                 arguments: {'count': count},
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
               ),
               actions: selecting ? [
                 TextButton(

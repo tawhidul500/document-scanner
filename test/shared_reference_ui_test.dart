@@ -48,18 +48,9 @@ void main() {
       expect(find.byTooltip('Scan'), findsNothing);
       expect(find.byTooltip('Home'), findsOneWidget);
       expect(find.byTooltip('Settings'), findsOneWidget);
-      final artwork = find.byKey(const ValueKey('navigation-artwork'));
-      final clip = tester.widget<ClipPath>(artwork);
-      final path = clip.clipper!.getClip(tester.getSize(artwork));
-      final scale = width / 375;
-      // Sample the camera icon and both outer edges of its ring.
-      for (final point in [
-        const Offset(188, 49), const Offset(151, 49), const Offset(225, 49),
-      ]) {
-        expect(path.contains(point * scale), isFalse);
-      }
-      expect(path.contains(Offset(62 * scale, 72 * scale)), isTrue);
-      expect(path.contains(Offset(307 * scale, 72 * scale)), isTrue);
+      expect(find.byIcon(Icons.camera_alt_rounded), findsNothing);
+      expect(find.byIcon(Icons.home_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
       expect(tester.takeException(), isNull);
     }
   });

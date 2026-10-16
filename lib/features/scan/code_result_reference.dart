@@ -63,7 +63,7 @@ class _ReferenceCodeResultScreen extends StatelessWidget {
 
   List<Widget> _promotion(CodeResultColors c) => [
     _referenceText('TRY OUR OTHER APP', x: 20, baseline: 366, width: 260,
-      size: 11, weight: FontWeight.w600, tracking: 1.4,
+      size: 11, weight: FontWeight.w700, tracking: 1.4,
       color: Colors.white.withValues(alpha: c.dark ? .9 : .75)),
     Positioned(left: 297, top: 350, width: 62, height: 24,
       child: Container(decoration: BoxDecoration(
@@ -87,7 +87,7 @@ class _ReferenceCodeResultScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(13)),
           child: Stack(children: [_referenceText(chip.$3,
             x: 0, baseline: 17, width: chip.$2, size: 12,
-            weight: FontWeight.w600, align: TextAlign.center)]))),
+            weight: FontWeight.w700, align: TextAlign.center)]))),
     _referenceText('Make your own', x: 0, baseline: 634, width: 375,
       size: 23, weight: FontWeight.w800, align: TextAlign.center),
     _referenceText('QR & Barcodes', x: 0, baseline: 661, width: 375,
@@ -105,7 +105,7 @@ class _ReferenceCodeResultScreen extends StatelessWidget {
             Positioned(left: 52, top: 14, width: 22, height: 24,
               child: _art('play', width: 22, height: 24, color: c.dark ? c.action : null)),
             _referenceText('GET IT ON', x: 82, baseline: 21, width: 150, size: 10,
-              weight: FontWeight.w600, tracking: .8,
+              weight: FontWeight.w700, tracking: .8,
               color: c.dark ? c.storeCaption : const Color(0xFF6B6B7B)),
             _referenceText('Google Play', x: 82, baseline: 39, width: 150, size: 17,
               weight: FontWeight.w700, color: c.storeText),
@@ -135,7 +135,7 @@ class _ReferenceCard extends StatelessWidget {
     final actionColor = c.dark ? c.action : const Color(0xFF4B68FF);
     final format = formatLabel ?? 'Barcode';
     final labelPainter = TextPainter(text: TextSpan(text: format,
-      style: const TextStyle(fontFamily: 'Inter', fontSize: 11,
+      style: const TextStyle(fontFamily: 'Inter', fontSize: 13,
         fontWeight: FontWeight.w700, letterSpacing: .6)),
       textDirection: TextDirection.ltr)..layout();
     final formatWidth = math.max(64.0, labelPainter.width + 16);
@@ -149,7 +149,7 @@ class _ReferenceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(28)),
       child: Stack(clipBehavior: Clip.none, children: [
         _referenceText(qrOnly ? 'QR Code Detected' : 'Barcode Detected',
-          x: 0, baseline: 39, width: 343, size: 18, weight: FontWeight.w600,
+          x: 0, baseline: 39, width: 343, size: 18, weight: FontWeight.w700,
           align: TextAlign.center),
         Positioned(left: 295, top: 8, width: 44, height: 44,
           child: _ReferenceTap(label: 'Scan again', onTap: onClose,
@@ -178,7 +178,7 @@ class _ReferenceCard extends StatelessWidget {
             child: _art('mini_barcode', width: 64, height: 30)),
           Positioned(left: 32, top: 108, width: 279, height: 34,
             child: _ReferenceValue(value: value, size: 22, baseline: 22,
-              tracking: 2, weight: FontWeight.w600)),
+              tracking: 2, weight: FontWeight.w700)),
         ],
         for (final action in [
           (16.0, qrOnly ? 'Open' : 'Search', qrOnly ? 'open' : 'search', onOpen),
@@ -205,7 +205,7 @@ class _ReferenceCard extends StatelessWidget {
                       child: _art('save', width: 16, height: 20, color: actionColor)),
                   _referenceText(action.$2, x: action.$3 == 'copy' ? 35.5 :
                     action.$3 == 'save' ? 41 : 39, baseline: 27.5,
-                    width: 57, size: 15, weight: FontWeight.w600, color: actionColor),
+                    width: 57, size: 15, weight: FontWeight.w700, color: actionColor),
                 ])))),
       ]),
     );

@@ -86,6 +86,7 @@ class _StartupScreenState extends State<StartupScreen> {
   DocumentStore? store;
   Object? error;
   double? progress;
+  bool animationComplete = false;
   AppPreferences get preferences => widget.preferences ?? AppPreferences.instance;
   @override
   void initState() {
@@ -97,6 +98,7 @@ class _StartupScreenState extends State<StartupScreen> {
     setState(() {
       error = null;
       progress = null;
+      animationComplete = false;
     });
     DocumentStore? next;
     try {
@@ -147,7 +149,14 @@ class _StartupScreenState extends State<StartupScreen> {
           ),
         ),
       );
-    if (store == null) return SplashScreen(progress: progress);
+    if (store == null || !animationComplete) {
+      return SplashScreen(
+        progress: progress,
+        onAnimationComplete: () {
+          if (mounted) setState(() => animationComplete = true);
+        },
+      );
+    }
     return AnimatedBuilder(
       animation: preferences,
       builder: (_, child) => preferences.languageSetupComplete

@@ -128,7 +128,7 @@ class SignatureStyleBar extends StatelessWidget {
                     gallery
                         ? '${(weight / 70 * 100).round()}%'
                         : '${weight.round()}',
-                    style: const TextStyle(fontSize: 10),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ],
               ),
@@ -264,7 +264,7 @@ class _SignatureDrawScreenState extends State<SignatureDrawScreen> {
                   alignment: Alignment(0, -.3),
                   child: AppText(
                     'Sign here',
-                    style: TextStyle(fontSize: 18, color: Color(0xFF566781)),
+                    style: TextStyle(fontSize: 20, color: Color(0xFF566781)),
                   ),
                 ),
               CustomPaint(painter: _InkPainter(strokes, color, weight)),
@@ -521,14 +521,14 @@ class _SignatureEditorState extends State<SignatureEditor> {
         ),
         title: const AppText(
           'Add Signature',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         actions: [
           TextButton(
             onPressed: busy || page == null ? null : done,
             child: AppText(
               'Done',
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 18),
             ),
           ),
         ],

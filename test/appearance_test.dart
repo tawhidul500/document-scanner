@@ -136,10 +136,10 @@ void main() {
       final toolbar = tester.widget<DecoratedBox>(find.descendant(
         of: find.byType(ReferenceToolbarSurface), matching: find.byType(DecoratedBox)).first);
       expect((toolbar.decoration as BoxDecoration).color, AppPalette(dark).surface);
-      final assetNames = tester.widgetList<Image>(find.byType(Image))
-        .map((image) => (image.image as AssetImage).assetName);
-      expect(assetNames, contains(dark ? 'assets/home/exact_navigation_dark.png'
-        : 'assets/home/exact_navigation.png'));
+      final navigation = tester.widget<CustomPaint>(
+        find.byKey(const ValueKey('navigation-surface')));
+      expect((navigation.painter as NavigationSurfacePainter).color,
+        AppPalette(dark).surface);
       expect(tester.takeException(), isNull);
     }
   });

@@ -1,101 +1,106 @@
-import 'package:pdf_scanner/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
 
-/// Artwork is split into components from the supplied SVG, at 4x density.
-/// Hit regions remain native controls; system bars remain OS-owned.
+/// Compact reference navigation with a raised camera and a real curved cutout.
+/// Native controls keep labels sharp and respect locale and text scaling.
 class ReferenceHomeNavigation extends StatelessWidget {
-  const ReferenceHomeNavigation({super.key, this.cameraKey, this.cameraVisible = true, this.settingsSelected = false, this.homeSelected = true,
-    this.onScan, this.onHome, this.onSettings});
+  const ReferenceHomeNavigation({super.key, this.cameraKey,
+    this.cameraVisible = true, this.settingsSelected = false,
+    this.homeSelected = true, this.onScan, this.onHome, this.onSettings});
   final GlobalKey? cameraKey;
-  final bool cameraVisible;
-  final bool settingsSelected, homeSelected;
+  final bool cameraVisible, settingsSelected, homeSelected;
   final VoidCallback? onScan, onHome, onSettings;
 
-  Widget target(BuildContext context, String label, VoidCallback? action, {Key? key}) =>
-    Tooltip(message: context.tr(label), child: Semantics(button: true, label: context.tr(label),
-      child: Material(color: Colors.transparent,
-        child: InkWell(key: key, onTap: action,
-          borderRadius: BorderRadius.circular(30)))));
-
   @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: AppPalette.of(context).surface,
-    child: Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
-      child: AspectRatio(aspectRatio: 375 / 116,
-        child: LayoutBuilder(builder: (context, constraints) {
-          final scale = constraints.maxWidth / 375;
-          return Stack(children: [
-            Positioned.fill(child: IgnorePointer(child: Transform.flip(
-              flipX: !context.englishLayout && Directionality.of(context) == TextDirection.rtl,
-              child: ClipPath(
-              key: const ValueKey('navigation-artwork'),
-              clipper: !context.englishLayout
-                  ? _LocalizedNavigationArtwork(hideCamera: !cameraVisible)
-                  : cameraVisible ? null : const _HideCameraArtwork(),
-              child: Image.asset(
-              themedAsset(context, 'assets/home/exact_navigation${settingsSelected ? '_settings' : homeSelected ? '' : '_neutral'}.png'), fit: BoxFit.fill,
-              excludeFromSemantics: true))))),
-            if (!context.englishLayout)
-              for (final tab in [(true, 'Home', homeSelected), (false, 'Settings', settingsSelected)])
-                PositionedDirectional(start: tab.$1 ? 5 * scale : null,
-                  end: tab.$1 ? null : 11 * scale, bottom: 8 * scale,
-                  width: 115 * scale, height: 22 * scale,
-                  child: IgnorePointer(child: Center(child: AppText(tab.$2,
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12 * scale,
-                      color: tab.$3 ? AppPalette.of(context).primary : AppPalette.of(context).text))))),
-            if (cameraVisible) Positioned(left: 152 * scale, top: 13 * scale,
-              width: 72 * scale, height: 72 * scale,
-              child: target(context, 'Scan', onScan, key: cameraKey)),
-            PositionedDirectional(start: 25 * scale, top: 56 * scale,
-              width: 74 * scale, height: 60 * scale,
-              child: Semantics(selected: homeSelected, child: target(context, 'Home', onHome))),
-            PositionedDirectional(end: 31 * scale, top: 56 * scale,
-              width: 74 * scale, height: 60 * scale,
-              child: Semantics(selected: settingsSelected, child: target(context, 'Settings', onSettings))),
-          ]);
-        }),
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    final extra = (MediaQuery.textScalerOf(context).scale(13) - 13).clamp(0.0, 40.0);
+    return SizedBox(
+      height: 100 + bottom + extra,
+      child: Stack(children: [
+        Positioned.fill(child: CustomPaint(
+          key: const ValueKey('navigation-surface'),
+          painter: NavigationSurfacePainter(p.surface, p.dark, p.background),
+        )),
+        PositionedDirectional(start: 0, top: 36, bottom: bottom + 4,
+          width: MediaQuery.sizeOf(context).width * .44,
+          child: _tab(context, 'Home', Icons.home_rounded, homeSelected, onHome)),
+        PositionedDirectional(end: 0, top: 36, bottom: bottom + 4,
+          width: MediaQuery.sizeOf(context).width * .44,
+          child: _tab(context, 'Settings', Icons.settings_outlined, settingsSelected, onSettings)),
+        if (cameraVisible) Positioned(top: 0, left: 0, right: 0,
+          child: Center(child: Tooltip(message: context.tr('Scan'),
+            child: Semantics(button: true, label: context.tr('Scan'),
+              child: Material(
+                color: p.dark ? const Color(0xFF3177DE) : const Color(0xFF205BBF),
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(key: cameraKey, onTap: onScan,
+                  customBorder: const CircleBorder(),
+                  child: const SizedBox(width: 52, height: 52,
+                    child: Icon(Icons.camera_alt_rounded, size: 30, color: Colors.white)),
+                ),
+              ),
+            ),
+          )),
+        ),
+      ]),
+    );
+  }
+
+  Widget _tab(BuildContext context, String label, IconData icon,
+      bool selected, VoidCallback? onTap) {
+    final p = AppPalette.of(context);
+    final color = selected ? p.primary : p.dark ? p.text : const Color(0xFF141414);
+    return Tooltip(message: context.tr(label),
+      child: Semantics(button: true, selected: selected,
+        child: Material(color: Colors.transparent,
+          child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(16),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(icon, size: 27, color: color),
+              const SizedBox(height: 5),
+              AppText(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, height: 1.2, color: color)),
+            ]),
+          ),
+        ),
       ),
-    ),
-  );
-}
-
-/// Retains the supplied icons while removing the English lettering below them.
-class _LocalizedNavigationArtwork extends CustomClipper<Path> {
-  const _LocalizedNavigationArtwork({required this.hideCamera});
-  final bool hideCamera;
-  @override
-  Path getClip(Size size) {
-    final scale = size.width / 375;
-    if (!hideCamera) return Path()..addRect(Rect.fromLTWH(0, 0, size.width, 90 * scale));
-    return Path()
-      ..addRect(Rect.fromLTWH(0, 0, 130 * scale, 90 * scale))
-      ..addRect(Rect.fromLTRB(246 * scale, 0, size.width, 90 * scale));
+    );
   }
-  @override
-  bool shouldReclip(_LocalizedNavigationArtwork old) => old.hideCamera != hideCamera;
 }
 
-/// The navigation bitmap contains the camera, its ring, and its shadow.
-/// Clip the entire centre strip while the menu supplies its own close button.
-/// The white navigation surface remains underneath, with both side tabs intact.
-class _HideCameraArtwork extends CustomClipper<Path> {
-  const _HideCameraArtwork();
+class NavigationSurfacePainter extends CustomPainter {
+  const NavigationSurfacePainter(this.color, this.dark, this.background);
+  final Color color, background;
+  final bool dark;
 
   @override
-  Path getClip(Size size) {
-    final scale = size.width / 375;
-    return Path()
-      ..addRect(Rect.fromLTWH(0, 0, 130 * scale, size.height))
-      ..addRect(Rect.fromLTRB(246 * scale, 0, size.width, size.height));
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Offset.zero & size, Paint()..color = background);
+    final c = size.width / 2;
+    final path = Path()
+      ..moveTo(0, 26)
+      ..lineTo(c - 50, 26)
+      ..cubicTo(c - 36, 26, c - 35, 30, c - 32, 40)
+      ..cubicTo(c - 23, 68, c + 23, 68, c + 32, 40)
+      ..cubicTo(c + 35, 30, c + 36, 26, c + 50, 26)
+      ..lineTo(size.width, 26)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()
+      ..color = Colors.black.withValues(alpha: dark ? .30 : .16)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+    canvas.drawPath(path, Paint()..color = color);
   }
 
   @override
-  bool shouldReclip(_HideCameraArtwork oldClipper) => false;
+  bool shouldRepaint(NavigationSurfacePainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.dark != dark ||
+      oldDelegate.background != background;
 }
-
 
 /// Returning to the root before scanning reuses the existing scan workflow.
 void scanFromNavigation(BuildContext context, VoidCallback? onScan) {

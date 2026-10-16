@@ -41,7 +41,7 @@ class ScannerCameraShell extends StatelessWidget {
           icon: Icon(automatic ? Icons.check_circle : Icons.radio_button_unchecked,
             size: 16, color: automatic ? scannerMint : Colors.white70),
           label: AppText(automatic ? 'Auto' : 'Manual',
-            style: const TextStyle(color: Colors.white, fontSize: 12))),
+            style: const TextStyle(color: Colors.white, fontSize: 14))),
         if (onEnhance != null) IconButton(
           onPressed: busy ? null : onEnhance,
           tooltip: context.tr(enhance ? 'Auto enhance on' : 'Auto enhance off'),
@@ -62,7 +62,7 @@ class ScannerCameraShell extends StatelessWidget {
                 color: detected ? scannerMint : Colors.white54, shape: BoxShape.circle)),
               const SizedBox(width: 8),
               Flexible(child: AppText(status, textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600))),
+                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700))),
             ]),
           ))),
         if (showBatch) Positioned(bottom: 16, left: 0, right: 0,
@@ -78,7 +78,7 @@ class ScannerCameraShell extends StatelessWidget {
                     foregroundColor: batch == value ? Colors.white : const Color(0xFFCFD3D8),
                     padding: EdgeInsets.zero),
                   child: AppText(kind == ScanKind.idCard ? (value ? 'Both side' : 'One side') : (value ? 'Batch' : 'Single'),
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)))),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)))),
             ]),
           ))),
         if (pageCount > 0) Positioned(right: 12, bottom: showBatch ? 74 : 16,
@@ -107,7 +107,7 @@ class ScannerCameraShell extends StatelessWidget {
       style: TextButton.styleFrom(foregroundColor: Colors.white),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Image.asset('assets/scanner/${text == 'Import Images' ? 'images' : 'files'}.png', width: 26, height: 26, excludeFromSemantics: true), const SizedBox(height: 7),
-        AppText(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+        AppText(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
       ])));
 }
 
@@ -167,8 +167,8 @@ class _ScannerModeStripState extends State<ScannerModeStrip> {
               style: TextButton.styleFrom(padding: EdgeInsets.zero,
                 foregroundColor: mode == widget.kind ? scannerMint : const Color(0xFFCFD3D8),
                 disabledForegroundColor: mode == widget.kind ? scannerMint : Colors.white38),
-              child: AppText(mode.label, style: TextStyle(fontSize: 13,
-                fontWeight: mode == widget.kind ? FontWeight.w700 : FontWeight.w600))));
+              child: AppText(mode.label, style: TextStyle(fontSize: 15,
+                fontWeight: mode == widget.kind ? FontWeight.w700 : FontWeight.w700))));
         },
       ),
     ));

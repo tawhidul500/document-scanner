@@ -120,7 +120,7 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
       context: context,
       builder: (c) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        title: AppText(title, style: const TextStyle(fontSize: 17)),
+        title: AppText(title, style: const TextStyle(fontSize: 19)),
         content: Form(
           key: key,
           child: TextFormField(
@@ -422,7 +422,7 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
               selecting
                   ? context.tr(count == 0 ? 'Select items' : '{count} Selected', {'count': count})
                   : folders.names[current] ?? context.tr(widget.kind.label),
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             actions: selecting
                 ? [
@@ -651,7 +651,7 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: AppPalette.of(context).text,
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
@@ -660,7 +660,7 @@ class _DocumentFolderScreenState extends State<DocumentFolderScreen> {
                               subtitle,
                               style: TextStyle(
                                 color: AppPalette.of(context).secondary,
-                                fontSize: 11,
+                                fontSize: 13,
                               ),
                             ),
                           ],

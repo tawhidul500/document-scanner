@@ -159,7 +159,7 @@ class _RecognizeTextScreenState extends State<RecognizeTextScreen> {
         ),
         title: const AppText(
           'Recognize Text',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
         ),
         actions: [
           TextButton(
@@ -221,7 +221,7 @@ class _RecognizeTextScreenState extends State<RecognizeTextScreen> {
                   textAlignVertical: TextAlignVertical.top,
                   textAlign: TextAlign.justify,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     height: 1.4,
                     color: AppPalette.of(context).text,
                   ),
@@ -277,7 +277,7 @@ class _PdfNameDialogState extends State<_PdfNameDialog> {
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     title: const AppText(
       'PDF',
-      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
     ),
     content: SizedBox(
       width: 220,
@@ -286,7 +286,7 @@ class _PdfNameDialogState extends State<_PdfNameDialog> {
         autofocus: true,
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => submit(),
-        style: const TextStyle(fontSize: 12),
+        style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
           hintText: context.tr('Enter File Name'),
           errorText: context.trOrNull(error),

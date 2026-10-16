@@ -105,7 +105,7 @@ class _PageEditorState extends State<PageEditor> {
         ),
         title: AppText(
           widget.sign ? 'Sign page' : 'Crop',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         actions: [
           if (widget.sign)
@@ -120,7 +120,7 @@ class _PageEditorState extends State<PageEditor> {
             onPressed: busy || bytes == null ? null : apply,
             child: AppText(
               'Done',
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 18),
             ),
           ),
         ],

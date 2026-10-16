@@ -156,7 +156,7 @@ class CameraActionMenu extends StatelessWidget {
                                                   : 1,
                                               style: const TextStyle(
                                                 fontFamily: 'Inter',
-                                                fontSize: 16,
+                                                fontSize: 18,
                                                 fontWeight: FontWeight.w500,
                                                 color: Colors.white,
                                               ),

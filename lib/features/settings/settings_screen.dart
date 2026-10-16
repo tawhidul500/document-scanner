@@ -1,6 +1,7 @@
 import '../../l10n/language_options.dart';
 import 'package:pdf_scanner/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import '../../widgets/settings_icon.dart';
 import '../../theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -154,11 +155,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _section(String title) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
     child: AppText(context.tr(title), style: TextStyle(
-      fontSize: 13, height: 19 / 13, fontWeight: FontWeight.w600,
+      fontSize: 15, height: 1.35, fontWeight: FontWeight.w700,
       color: AppPalette.of(context).text)),
   );
 
-  Widget _card(List<Widget> rows) => Material(
+  Widget _card(List<Widget> rows) => DecoratedBox(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: [BoxShadow(
+        color: Colors.black.withValues(alpha: AppPalette.of(context).dark ? .12 : .04),
+        blurRadius: 8, offset: const Offset(0, 2),
+      )],
+    ),
+    child: Material(
     color: AppPalette.of(context).surface,
     borderRadius: BorderRadius.circular(12),
     clipBehavior: Clip.antiAlias,
@@ -174,6 +183,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ]),
     ),
+    ),
   );
 
   Widget _row(String icon, String title, String subtitle, {
@@ -181,29 +191,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) => InkWell(
     onTap: onTap,
     child: ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 48),
+      constraints: const BoxConstraints(minHeight: 56),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(children: [
-          Image.asset(themedAsset(context, 'assets/theme/$icon.png'), width: 37.108,
-            height: 37.108, excludeFromSemantics: true),
+          SettingsIcon(icon),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center, children: [
               AppText(context.tr(title), style: TextStyle(
-                color: AppPalette.of(context).text, fontSize: 12,
-                height: 1.35, fontWeight: FontWeight.w600)),
+                color: AppPalette.of(context).text, fontSize: 14,
+                height: 1.35, fontWeight: FontWeight.w700)),
               const SizedBox(height: 3),
               AppText(context.tr(subtitle), style: TextStyle(
-                color: AppPalette.of(context).secondary, fontSize: 11, height: 1.35)),
+                color: AppPalette.of(context).secondary, fontSize: 13, height: 1.35)),
             ])),
           if (value != null) ...[
             const SizedBox(width: 8),
             Flexible(child: AppText(context.tr(value), textAlign: TextAlign.end,
-              style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 12))),
+              style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 14))),
           ],
           const SizedBox(width: 10),
-          trailing ?? Image.asset('assets/theme/chevron.png', width: 9, height: 14, matchTextDirection: true,
+          trailing ?? Image.asset(themedAsset(context, 'assets/theme/chevron.png'), width: 9, height: 14, matchTextDirection: true,
             color: AppPalette.of(context).secondary, excludeFromSemantics: true),
         ]),
       ),
@@ -257,12 +266,12 @@ class _ThemeScreenState extends State<ThemeScreen> {
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               AppText(context.tr('Choose app appearance'), style: TextStyle(
-                color: AppPalette.of(context).text, fontSize: 18,
+                color: AppPalette.of(context).text, fontSize: 20,
                 height: 1.35, fontWeight: FontWeight.w700)),
               const SizedBox(height: 2),
               AppText(context.tr('Select how Document Scanner looks on your device.'),
                 style: TextStyle(color: AppPalette.of(context).secondary,
-                  fontSize: 12, height: 1.35)),
+                  fontSize: 14, height: 1.35)),
               const SizedBox(height: 7.5),
               for (final mode in ThemeMode.values) ...[
                 if (mode != ThemeMode.system) const SizedBox(height: 9),
@@ -295,16 +304,18 @@ class _ThemeScreenState extends State<ThemeScreen> {
           child: ConstrainedBox(constraints: const BoxConstraints(minHeight: 96),
             child: Padding(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 11),
               child: Row(children: [
-                Image.asset('assets/theme/${mode.name}.png', width: 94, height: 72,
-                  excludeFromSemantics: true),
+                SizedBox(width: 64, height: 64, child: Icon(
+                  mode == ThemeMode.system ? Icons.brightness_auto_outlined
+                    : mode == ThemeMode.light ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                  size: 40, color: p.primary)),
                 const SizedBox(width: 16.5),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center, children: [
                     AppText(context.tr(themeModeLabel(mode)), style: TextStyle(
-                      fontSize: 12, height: 1.35, fontWeight: FontWeight.w600, color: p.text)),
+                      fontSize: 14, height: 1.35, fontWeight: FontWeight.w700, color: p.text)),
                     const SizedBox(height: 6),
                     AppText(context.tr(description), style: TextStyle(
-                      fontSize: 10.5, height: 1.35, color: p.secondary)),
+                      fontSize: 12.5, height: 1.35, color: p.secondary)),
                   ])),
                 const SizedBox(width: 8),
                 Container(width: 22, height: 22,
@@ -394,8 +405,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
             ),
             child: Row(
               children: [
-                Image.asset(themedAsset(context, 'assets/theme/language.png'),
-                    width: 37.108, height: 37.108, excludeFromSemantics: true),
+                const SettingsIcon('language'),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -405,13 +415,13 @@ class _LanguageScreenState extends State<LanguageScreen> {
                         context.tr('Choose App Language'),
                         style: TextStyle(
                           color: AppPalette.of(context).text,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
                         ),
                       ),
                       AppText(
                         context.tr('Change the language used in the app'),
-                        style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 11),
+                        style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 13),
                       ),
                     ],
                   ),
@@ -448,12 +458,12 @@ class _LanguageScreenState extends State<LanguageScreen> {
                       style: TextStyle(
                         color: AppPalette.of(context).text,
                         fontWeight: FontWeight.w500,
-                        fontSize: 13,
+                        fontSize: 15,
                       ),
                     ),
                     subtitle: AppText(
                       language.$4,
-                      style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 11),
+                      style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 13),
                     ),
                     trailing: Icon(
                       AppPreferences.instance.language == language.$1
@@ -498,12 +508,12 @@ class AboutAppScreen extends StatelessWidget {
                       style: TextStyle(
                         color: AppPalette.of(context).text,
                         fontWeight: FontWeight.bold,
-                        fontSize: 17,
+                        fontSize: 19,
                       ),
                     ),
                     AppText(
                       'Scan • Save • Share',
-                      style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 12),
+                      style: TextStyle(color: AppPalette.of(context).secondary, fontSize: 14),
                     ),
                     const SizedBox(height: 5),
                     _chip(context, 'Version 0.5.0'),
@@ -520,15 +530,15 @@ class AboutAppScreen extends StatelessWidget {
             children: [
               AppText(
                 'Transform your smartphone into a powerful portable scanner. Scan, organize, convert, and share your documents effortlessly from your mobile device.',
-                style: TextStyle(color: AppPalette.of(context).text, height: 1.5, fontSize: 13),
+                style: TextStyle(color: AppPalette.of(context).text, height: 1.5, fontSize: 15),
               ),
               Divider(color: AppPalette.of(context).outline),
               AppText(
                 'Works with',
                 style: TextStyle(
                   color: AppPalette.of(context).secondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 7),
@@ -594,8 +604,8 @@ class AboutAppScreen extends StatelessWidget {
                               pair[i].$2,
                               style: TextStyle(
                                 color: AppPalette.of(context).text,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
                               ),
                             ),
                           ),
@@ -627,13 +637,13 @@ class AboutAppScreen extends StatelessWidget {
                       'Go paperless',
                       style: TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 17,
                       ),
                     ),
                     AppText(
                       'Keep your important documents organized',
-                      style: TextStyle(color: Colors.white, fontSize: 11),
+                      style: TextStyle(color: Colors.white, fontSize: 13),
                     ),
                   ],
                 ),
@@ -651,7 +661,7 @@ class AboutAppScreen extends StatelessWidget {
       style: TextStyle(
         color: AppPalette.of(context).text,
         fontWeight: FontWeight.bold,
-        fontSize: 15,
+        fontSize: 17,
       ),
     ),
   );
@@ -673,8 +683,8 @@ class AboutAppScreen extends StatelessWidget {
       text,
       style: TextStyle(
         color: AppPalette.of(context).primary,
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
       ),
     ),
   );
@@ -700,7 +710,7 @@ class _SettingsShell extends StatelessWidget {
           elevation: 0,
           systemOverlayStyle: AppPalette.of(context).systemBars,
           automaticallyImplyLeading: false,
-          toolbarHeight: brand ? 57 : 50,
+          toolbarHeight: brand ? 84 : 64,
           titleSpacing: brand ? 15 : 9,
           leadingWidth: brand ? null : 56,
           leading: brand ? null : IconButton(
@@ -719,13 +729,13 @@ class _SettingsShell extends StatelessWidget {
                           AppText(
                             'Document Scanner',
                             style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                           AppText(
                             'Scan • Save • Share',
-                            style: TextStyle(fontSize: 13),
+                            style: TextStyle(fontSize: 15),
                           ),
                         ],
                       ),
@@ -735,8 +745,8 @@ class _SettingsShell extends StatelessWidget {
               : AppText(
                   title!,
                   style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
 
@@ -753,7 +763,8 @@ class _SettingsShell extends StatelessWidget {
         body: ColoredBox(color: AppPalette.of(context).header, child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
           child: ColoredBox(
-            color: AppPalette.of(context).background,
+            color: AppPalette.of(context).dark
+                ? AppPalette.of(context).background : const Color(0xFFF4F7FC),
             child: SizedBox.expand(child: child),
           ),
         )),

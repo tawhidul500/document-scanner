@@ -193,7 +193,7 @@ class _IdCardPreviewState extends State<IdCardPreview> {
         ),
         title: const AppText(
           'ID Card Preview',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
         actions: [
           TextButton(
@@ -271,7 +271,7 @@ class IdCardSidesPreview extends StatelessWidget {
         const SizedBox(height:24),
         for (var i=0;i<sides.length;i++) ...[
           AppText(i == 0 ? 'Front side' : 'Back side',
-            style: TextStyle(fontSize:14,fontWeight:FontWeight.w600,color:AppPalette.of(context).text)),
+            style: TextStyle(fontSize:14,fontWeight:FontWeight.w700,color:AppPalette.of(context).text)),
           const SizedBox(height:10),
           Container(
             key:ValueKey('id-card-side-$i'),

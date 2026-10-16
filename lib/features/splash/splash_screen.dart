@@ -5,15 +5,67 @@ import 'package:lottie/lottie.dart';
 import '../../l10n/app_localizations.dart';
 
 /// Uses the supplied six-second animation, including its animated loader.
-/// Real startup completion controls navigation, independently of the loop.
-class SplashScreen extends StatelessWidget {
-  const SplashScreen({super.key, this.progress});
+/// Plays one complete cycle at 1.5x before startup can navigate.
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key, this.progress, this.onAnimationComplete});
   final double? progress;
+  final VoidCallback? onAnimationComplete;
 
   static const animationAsset = 'assets/splash/opening_animation.json';
   static const topColor = Color(0xFF2468DC);
   static const middleColor = Color(0xFF1C59C1);
   static const bottomColor = Color(0xFF0C3585);
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController controller;
+  bool completionReported = false;
+  static const topColor = SplashScreen.topColor;
+  static const middleColor = SplashScreen.middleColor;
+  static const bottomColor = SplashScreen.bottomColor;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = AnimationController(vsync: this)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) finishAnimation();
+      });
+  }
+
+  void finishAnimation() {
+    if (completionReported) return;
+    completionReported = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onAnimationComplete?.call();
+    });
+  }
+
+  void updatePlayback() {
+    if (MediaQuery.of(context).disableAnimations) {
+      controller.stop();
+      controller.value = 1;
+      finishAnimation();
+    } else if (controller.duration != null && !completionReported && !controller.isAnimating) {
+      controller.forward();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    updatePlayback();
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
@@ -28,8 +80,8 @@ class SplashScreen extends StatelessWidget {
       body: Semantics(
         key: const ValueKey('startup-progress'),
         label: context.tr('Loading saved documents'),
-        value: progress == null ? null
-            : '${(progress!.clamp(0.0, 1.0) * 100).round()}%',
+        value: widget.progress == null ? null
+            : '${(widget.progress!.clamp(0.0, 1.0) * 100).round()}%',
         child: LayoutBuilder(builder: (context, box) {
           final scale = math.min(box.maxWidth / 375, box.maxHeight / 812);
           final top = (box.maxHeight - 812 * scale) / 2;
@@ -57,10 +109,17 @@ class SplashScreen extends StatelessWidget {
                     Positioned.fill(
                       child: ExcludeSemantics(
                         child: Lottie.asset(
-                          animationAsset,
+                          SplashScreen.animationAsset,
                           key: const ValueKey('opening-animation'),
                           fit: BoxFit.contain,
-                          repeat: true,
+                          controller: controller,
+                          repeat: false,
+                          onLoaded: (composition) {
+                            controller.duration = Duration(
+                              microseconds: (composition.duration.inMicroseconds / 1.5).round(),
+                            );
+                            updatePlayback();
+                          },
                           animate: !MediaQuery.of(context).disableAnimations,
                           delegates: context.englishLayout ? null : LottieDelegates(
                             values: [
@@ -68,14 +127,18 @@ class SplashScreen extends StatelessWidget {
                                 ValueDelegate.opacity([layer], value: 0),
                             ],
                           ),
-                          errorBuilder: (_, error, stack) => const Center(
+                          errorBuilder: (_, error, stack) {
+                            // A missing/corrupt animation must not block startup.
+                            finishAnimation();
+                            return const Center(
                             child: Padding(
                               padding: EdgeInsets.all(24),
                               child: AppText('Document Scanner',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(color: Colors.white, fontSize: 28)),
                             ),
-                          ),
+                          );
+                          },
                         ),
                       ),
                     ),
@@ -83,7 +146,7 @@ class SplashScreen extends StatelessWidget {
                     // Localize only these labels; keep all animation in every locale.
                     if (!context.englishLayout) ...[
                       caption('Document Scanner', top: 484, height: 56,
-                          size: 28, weight: FontWeight.w600),
+                          size: 28, weight: FontWeight.w700),
                       caption('Scan faster, work smarter', top: 538, height: 40,
                           size: 13),
                       caption('Loading saved documents', top: 716, height: 40,

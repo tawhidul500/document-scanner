@@ -90,14 +90,14 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
           },
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         actions: [
           TextButton(
             onPressed: busy ? null : done,
             child: AppText(
               'Done',
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 18),
             ),
           ),
         ],
@@ -206,7 +206,7 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
                     const SizedBox(height: 7),
                     AppText(
                       filterNames[i],
-                      style: const TextStyle(fontSize: 9),
+                      style: const TextStyle(fontSize: 11),
                       maxLines: 1,
                     ),
                   ],
@@ -239,7 +239,7 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
               children: [
                 const Icon(Icons.description_outlined, size: 23),
                 const SizedBox(height: 5),
-                AppText(paperNames[i], style: const TextStyle(fontSize: 10)),
+                AppText(paperNames[i], style: const TextStyle(fontSize: 12)),
               ],
             ),
           ),
@@ -267,7 +267,7 @@ class _EditorToolScreenState extends State<EditorToolScreen> {
               children: [
                 Icon(item.$1, size: 27),
                 const SizedBox(height: 4),
-                AppText(item.$2, style: const TextStyle(fontSize: 10)),
+                AppText(item.$2, style: const TextStyle(fontSize: 12)),
               ],
             ),
           ),

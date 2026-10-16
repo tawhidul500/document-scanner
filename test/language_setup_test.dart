@@ -23,7 +23,7 @@ void main() {
   Future<void> waitFor(WidgetTester tester, Finder target) async {
     for (var i = 0; i < 100; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
-      await tester.pump(const Duration(milliseconds: 30));
+      await tester.pump(const Duration(milliseconds: 100));
       if (target.evaluate().isNotEmpty) return;
     }
     fail('Did not reach $target');

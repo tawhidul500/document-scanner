@@ -54,7 +54,7 @@ class _LanguageSetupScreenState extends State<LanguageSetupScreen> {
           foregroundColor: Colors.white,
           systemOverlayStyle: palette.systemBars,
           title: const AppText('Language',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
         ),
         body: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -75,11 +75,11 @@ class _LanguageSetupScreenState extends State<LanguageSetupScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         AppText('Choose App Language', style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w700,
+                            fontSize: 22, fontWeight: FontWeight.w700,
                             color: palette.text)),
                         const SizedBox(height: 6),
                         AppText('Select a language to continue.', style: TextStyle(
-                            fontSize: 13, color: palette.secondary)),
+                            fontSize: 15, color: palette.secondary)),
                       ],
                     )),
                   ]),
@@ -107,10 +107,10 @@ class _LanguageSetupScreenState extends State<LanguageSetupScreen> {
                             leading: Text(language.$2,
                                 style: const TextStyle(fontSize: 30)),
                             title: Text(language.$3, style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600,
+                                fontSize: 18, fontWeight: FontWeight.w700,
                                 color: palette.text)),
                             subtitle: AppText(language.$4, style: TextStyle(
-                                fontSize: 12, color: palette.secondary)),
+                                fontSize: 14, color: palette.secondary)),
                             trailing: Icon(selectedLanguage == language.$1
                                 ? Icons.radio_button_checked : Icons.radio_button_off,
                                 color: selectedLanguage == language.$1
@@ -139,7 +139,7 @@ class _LanguageSetupScreenState extends State<LanguageSetupScreen> {
                   Semantics(liveRegion: true, child: AppText(
                     'Could not save language. Please try again.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: palette.danger, fontSize: 13))),
+                    style: TextStyle(color: palette.danger, fontSize: 15))),
                   const SizedBox(height: 12),
                 ],
                 SizedBox(width: double.infinity, child: FilledButton(
@@ -156,7 +156,7 @@ class _LanguageSetupScreenState extends State<LanguageSetupScreen> {
                   ),
                   child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Flexible(child: AppText('Next', textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
                     const SizedBox(width: 12),
                     if (saving)
                       SizedBox(width: 18, height: 18, child: CircularProgressIndicator(
@@ -168,7 +168,7 @@ class _LanguageSetupScreenState extends State<LanguageSetupScreen> {
                 const SizedBox(height: 12),
                 AppText('You can change this later in Settings.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: palette.secondary, fontSize: 12)),
+                    style: TextStyle(color: palette.secondary, fontSize: 14)),
               ]),
             ),
           ),

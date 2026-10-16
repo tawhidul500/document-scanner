@@ -13,8 +13,20 @@ import 'package:pdf_scanner/features/home/home_screen.dart';
 import 'package:pdf_scanner/features/splash/splash_screen.dart';
 import 'package:pdf_scanner/main.dart';
 
+Future<void> waitForAnimation(WidgetTester tester) async {
+  for (var i = 0; i < 100; i++) {
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+    await tester.pump();
+    final player = tester.widget<LottieBuilder>(
+      find.byKey(const ValueKey('opening-animation')));
+    if (player.controller is AnimationController &&
+        (player.controller! as AnimationController).duration != null) return;
+  }
+  fail('Lottie composition did not load');
+}
+
 void main() {
-  testWidgets('startup waits for work, not the six-second animation', (
+  testWidgets('startup waits for loading even after the full animation', (
     tester,
   ) async {
     final dir = Directory.systemTemp.createTempSync('startup_test_');
@@ -58,6 +70,7 @@ void main() {
           .properties.value,
       '40%',
     );
+    await waitForAnimation(tester);
     await tester.pump(const Duration(seconds: 8));
     expect(find.byType(HomeScreen), findsNothing);
     completion.complete(store);
@@ -70,7 +83,7 @@ void main() {
     dir.deleteSync(recursive: true);
   });
 
-  testWidgets('failed startup offers retry and fast success opens Home', (
+  testWidgets('retry waits for the animated loader to finish at 1.5x', (
     tester,
   ) async {
     final dir = Directory.systemTemp.createTempSync('startup_retry_');
@@ -96,14 +109,33 @@ void main() {
     }
     expect(find.text('Try again'), findsOneWidget);
     await tester.tap(find.text('Try again'));
-    for (var i = 0; i < 100 && find.byType(HomeScreen).evaluate().isEmpty; i++) {
+    for (var i = 0; i < 100 && attempts < 2; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
       await tester.pump();
     }
+    expect(attempts, 2);
+    await waitForAnimation(tester);
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.byType(SplashScreen), findsOneWidget);
+    expect(find.byType(HomeScreen), findsNothing);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
     expect(find.byType(HomeScreen), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     preferences.dispose();
     dir.deleteSync(recursive: true);
+  });
+
+  testWidgets('Lottie runs at 1.5x speed while data is loading', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: SplashScreen()));
+    await waitForAnimation(tester);
+    final player = tester.widget<LottieBuilder>(
+      find.byKey(const ValueKey('opening-animation')));
+    final controller = player.controller! as AnimationController;
+    expect(controller.duration, const Duration(seconds: 4));
+    await tester.pump(const Duration(seconds: 2));
+    expect(controller.value, closeTo(.5, .02));
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('supplied animation and footer fit a small phone with safe insets', (
@@ -147,7 +179,7 @@ void main() {
         final player = tester.widget<LottieBuilder>(
             find.byKey(const ValueKey('opening-animation')));
         expect(player.animate, isFalse);
-        expect(player.repeat, isTrue);
+        expect(player.repeat, isFalse);
         expect(find.byType(LinearProgressIndicator), findsNothing);
         if (language != 'en') {
           expect(find.text(AppStrings.translate('Document Scanner', language)),

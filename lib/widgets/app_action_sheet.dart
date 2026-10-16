@@ -70,8 +70,8 @@ class AppActionSheet extends StatelessWidget {
                         header: true,
                         child: DefaultTextStyle(
                           style: TextStyle(
-                            fontFamily: 'Inter', fontSize: 18,
-                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Inter', fontSize: 20,
+                            fontWeight: FontWeight.w700,
                             color: AppPalette.of(context).text,
                           ),
                           textAlign: TextAlign.center,
@@ -148,7 +148,7 @@ class AppMenuAction extends StatelessWidget {
           minLeadingWidth: 24,
           horizontalTitleGap: 24,
           leading: AppActionIcon(label, fallback: icon, color: color),
-          title: AppText(label, style: TextStyle(fontSize: 16, color: color)),
+          title: AppText(label, style: TextStyle(fontSize: 18, color: color)),
           subtitle: subtitle,
           onTap: onTap,
         ),

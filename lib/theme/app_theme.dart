@@ -65,12 +65,15 @@ class AppThemes {
       textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(
         foregroundColor: p.primary, disabledForegroundColor: p.disabled)),
       textTheme: ThemeData(brightness: brightness).textTheme.apply(
-        fontFamily: 'Inter', bodyColor: p.text, displayColor: p.text),
+        fontFamily: 'Inter', bodyColor: p.text, displayColor: p.text,
+        fontSizeDelta: 2),
       iconTheme: IconThemeData(color: p.text),
       appBarTheme: AppBarTheme(
         backgroundColor: p.surface, foregroundColor: p.text,
         surfaceTintColor: Colors.transparent, elevation: 0,
         scrolledUnderElevation: 0,
+        titleTextStyle: TextStyle(fontFamily: 'Inter', fontSize: 22,
+          fontWeight: FontWeight.w700, color: p.text),
         systemOverlayStyle: p.systemBars.copyWith(
           statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
           statusBarBrightness: dark ? Brightness.dark : Brightness.light)),

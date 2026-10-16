@@ -43,7 +43,7 @@ class AppToolbarAction extends StatelessWidget {
             AppActionIcon(label, fallback: icon),
             const SizedBox(height: 6),
             AppText(label, textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
           ],
         ),
       ),

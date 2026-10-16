@@ -26,9 +26,11 @@ def write(name, root, output):
 def extract(name, source, indices, box):
     x,y,w,h = box
     svg = E.parse(ROOT / 'design/theme' / source).getroot()
-    out = E.Element(NS+'svg', {'width':str(w),'height':str(h),'viewBox':f'{x} {y} {w} {h}'})
+    out = E.Element(NS+'svg', {'width':str(w),'height':str(h),'viewBox':f'{x} {y} {w} {h}', 'fill':svg.get('fill','none')})
     out.append(deepcopy(svg[-1]))
-    for i in indices: out.append(deepcopy(svg[0][i]))
+    for i in indices:
+        # Current supplied Settings SVG includes an additional status-bar mask.
+        out.append(deepcopy(svg[0][i + (1 if source == 'Setting_page.svg' else 0)]))
     return out
 
 def background(root, color):

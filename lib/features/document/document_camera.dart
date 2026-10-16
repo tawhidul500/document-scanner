@@ -15,6 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'edge_detector.dart';
+import 'native_document_detector.dart';
 import 'page_processing.dart';
 import 'id_card_processing.dart';
 
@@ -44,6 +45,29 @@ class _DocumentCameraState extends State<DocumentCamera>
       widget.idCard ? (bothSides ? 2 : 1) : widget.remaining;
   final pages = <String>[];
   final gate = AutoCaptureGate();
+  final detector = NativeDocumentDetector();
+  final smoother = DocumentOutlineSmoother();
+  int detectionEpoch = 0;
+  Size previewViewport = Size.zero;
+
+  void invalidateDetection() {
+    detectionEpoch++;
+    gate.reset();
+    smoother.reset();
+    quad = null;
+  }
+
+  bool visibleInPreview(DocumentQuad candidate, double width, double height) {
+    if (previewViewport.isEmpty) return false;
+    final scale = math.max(previewViewport.width / width, previewViewport.height / height);
+    final left = (previewViewport.width - width * scale) / 2;
+    final top = (previewViewport.height - height * scale) / 2;
+    return candidate.points.every((p) {
+      final x = left + p.x * width * scale, y = top + p.y * height * scale;
+      return x >= 4 && x <= previewViewport.width - 4 &&
+          y >= 4 && y <= previewViewport.height - 4;
+    });
+  }
   DocumentQuad? quad;
   bool enhance = true;
   double sharpness = 0;
@@ -56,6 +80,7 @@ class _DocumentCameraState extends State<DocumentCamera>
   String? error;
   DateTime lastFrame = DateTime.fromMillisecondsSinceEpoch(0);
   Future<void> cameraTask = Future.value();
+  Future<void> frameIdle = Future.value();
 
   @override
   void initState() {
@@ -65,6 +90,7 @@ class _DocumentCameraState extends State<DocumentCamera>
   }
 
   void configureCamera(bool open) {
+    invalidateDetection();
     cameraTask = cameraTask
         .then((_) async {
           final previous = camera;
@@ -115,7 +141,7 @@ class _DocumentCameraState extends State<DocumentCamera>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     active = state == AppLifecycleState.resumed;
-    gate.reset();
+    invalidateDetection();
     if (!busy) configureCamera(active);
   }
 
@@ -142,15 +168,20 @@ class _DocumentCameraState extends State<DocumentCamera>
         busy ||
         analyzing ||
         current == null ||
-        now.difference(lastFrame).inMilliseconds < 220)
+        now.difference(lastFrame).inMilliseconds < 150)
       return;
     analyzing = true;
+    final frameDone = Completer<void>();
+    frameIdle = frameDone.future;
+    final epoch = detectionEpoch;
     lastFrame = now;
     try {
       final plane = frame.planes.first;
-      // Locked portrait preview. iOS commonly supplies already-upright buffers.
-      final rotate = frame.width > frame.height;
-      final clockwise = current.description.sensorOrientation != 270;
+      final rotation = portraitFrameRotation(ios: Platform.isIOS,
+        width: frame.width, height: frame.height,
+        sensorOrientation: current.description.sensorOrientation);
+      final rotate = rotation == 90 || rotation == 270;
+      final clockwise = rotation == 90;
       final ow = rotate ? frame.height : frame.width;
       final oh = rotate ? frame.width : frame.height;
       const w = 320;
@@ -161,8 +192,10 @@ class _DocumentCameraState extends State<DocumentCamera>
       for (var y = 0; y < h; y++) {
         for (var x = 0; x < w; x++) {
           final ux = (x * ow / w).floor(), uy = (y * oh / h).floor();
-          final sx = rotate ? (clockwise ? uy : frame.width - 1 - uy) : ux;
-          final sy = rotate ? (clockwise ? frame.height - 1 - ux : ux) : uy;
+          final sx = rotate ? (clockwise ? uy : frame.width - 1 - uy)
+              : rotation == 180 ? frame.width - 1 - ux : ux;
+          final sy = rotate ? (clockwise ? frame.height - 1 - ux : ux)
+              : rotation == 180 ? frame.height - 1 - uy : uy;
           final offset = sy * plane.bytesPerRow + sx * stride;
           if (offset < 0 || offset + (bgra ? 2 : 0) >= plane.bytes.length)
             continue;
@@ -176,12 +209,8 @@ class _DocumentCameraState extends State<DocumentCamera>
         }
       }
       final quality = frameSharpness(gray, w, h);
-      var detected = await compute(detectDocument, <String, Object>{
-        'gray': gray,
-        'width': w,
-        'height': h,
-      });
-      if (!mounted || busy || !active || camera != current || leaving) return;
+      var detected = await detector.detectFrame(frame, rotation);
+      if (!mounted || busy || !active || camera != current || leaving || epoch != detectionEpoch) return;
       if (widget.idCard && detected != null) {
         final points = detected.points.map((p) => math.Point(p.x*w,p.y*h)).toList();
         final cardWidth = (points[0].distanceTo(points[1]) + points[3].distanceTo(points[2]))/2;
@@ -189,16 +218,21 @@ class _DocumentCameraState extends State<DocumentCamera>
         final ratio = math.max(cardWidth,cardHeight) / math.max(1,math.min(cardWidth,cardHeight));
         if (ratio < 1.2 || ratio > 2.1) detected = null;
       }
-      setState(() { quad = detected; sharpness = quality; });
+      setState(() { quad = smoother.add(detected); sharpness = quality; });
       if (automatic &&
           pages.length < captureLimit &&
-          gate.update(detected, DateTime.now(), ready: quality >= 35))
+          gate.update(detected, DateTime.now(), ready: quality >= 35 && detected != null &&
+            visibleInPreview(detected, ow.toDouble(), oh.toDouble())))
         unawaited(capture());
     } catch (_) {
-      if (mounted) setState(() => quad = null);
-      gate.reset();
+      if (mounted && camera == current && epoch == detectionEpoch) {
+        smoother.reset();
+        setState(() => quad = null);
+        gate.reset();
+      }
     } finally {
       analyzing = false;
+      frameDone.complete();
     }
   }
 
@@ -209,8 +243,14 @@ class _DocumentCameraState extends State<DocumentCamera>
       ).showSnackBar(SnackBar(content: AppText(value)));
   }
 
-  Future<void> append(Uint8List bytes, {bool fromCamera = false}) async {
+  Future<void> append(Uint8List bytes, {bool fromCamera = false, String? sourcePath}) async {
     if (pages.length >= captureLimit) return;
+    DocumentQuad? stillQuad;
+    if (!widget.idCard && sourcePath != null) {
+      try { stillQuad = await detector.detectFile(sourcePath); } catch (_) {
+        // Keep the full photograph for the existing manual corner editor.
+      }
+    }
     var output = widget.idCard && fromCamera && !idViewport.isEmpty
         ? await compute(processIdCardCapture, <String, Object>{
             'bytes': bytes,
@@ -221,7 +261,9 @@ class _DocumentCameraState extends State<DocumentCamera>
           })
         : await compute(processPage, <String, Object>{
             'bytes': bytes,
-            'detect': true,
+            'detect': widget.idCard,
+            if (stillQuad != null)
+              'corners': stillQuad.points.expand((p) => [p.x, p.y]).toList(),
             'enhance': enhance,
           });
     if (widget.idCard) output = await compute(orientIdCard, output);
@@ -242,13 +284,15 @@ class _DocumentCameraState extends State<DocumentCamera>
       );
       return;
     }
+    invalidateDetection();
     setState(() => busy = true);
     var captured = false;
     try {
       if (c.value.isStreamingImages) await c.stopImageStream();
+      await frameIdle; // Finish native frame detection before still-image detection.
       final shot = await c.takePicture();
       try {
-        await append(await shot.readAsBytes(), fromCamera: true);
+        await append(await shot.readAsBytes(), fromCamera: true, sourcePath: shot.path);
         captured = true;
       } finally {
         try {
@@ -307,6 +351,7 @@ class _DocumentCameraState extends State<DocumentCamera>
     try {
       if (camera?.value.isStreamingImages ?? false)
         await camera!.stopImageStream();
+      await frameIdle;
       final picker = ImagePicker();
       final images = batchEnabled && !widget.idCard ? await picker.pickMultiImage() : <XFile>[];
       if (!batchEnabled || widget.idCard) {
@@ -314,7 +359,7 @@ class _DocumentCameraState extends State<DocumentCamera>
         if (one != null) images.add(one);
       }
       for (final image in images.take(captureLimit - pages.length)) {
-        await append(await image.readAsBytes());
+        await append(await image.readAsBytes(), sourcePath: image.path);
       }
       if (!mounted) return;
       if (images.isNotEmpty && !batchEnabled) {
@@ -394,6 +439,7 @@ class _DocumentCameraState extends State<DocumentCamera>
     setState(() => busy = true);
     try {
       if (camera?.value.isStreamingImages ?? false) await camera!.stopImageStream();
+      await frameIdle;
       final path = await FlutterFileDialog.pickFile(params: OpenFileDialogParams(
         dialogType: OpenFileDialogType.document,
         fileExtensionsFilter: widget.idCard ? ['jpg', 'jpeg', 'png'] : ['pdf', 'jpg', 'jpeg', 'png'],
@@ -416,7 +462,7 @@ class _DocumentCameraState extends State<DocumentCamera>
             if (mounted) setState(() => pages.add(destination));
           }
         } else {
-          await append(bytes);
+          await append(bytes, sourcePath: path);
         }
         if (mounted && pages.isNotEmpty && !batchEnabled) finish();
       }
@@ -431,7 +477,7 @@ class _DocumentCameraState extends State<DocumentCamera>
   }
 
   Future<void> focus(Offset point) async {
-    gate.reset();
+    invalidateDetection();
     try {
       await camera?.setFocusPoint(point);
       await camera?.setExposurePoint(point);
@@ -448,8 +494,9 @@ class _DocumentCameraState extends State<DocumentCamera>
     if (c == null || !c.value.isInitialized) return const Center(child: CircularProgressIndicator(color: scannerMint));
     return LayoutBuilder(builder: (context, constraints) {
       idViewport = constraints.biggest;
-      final width = c.value.previewSize!.height;
-      final height = c.value.previewSize!.width;
+      previewViewport = constraints.biggest;
+      final width = math.min(c.value.previewSize!.width, c.value.previewSize!.height);
+      final height = math.max(c.value.previewSize!.width, c.value.previewSize!.height);
       final zoom = math.max(constraints.maxWidth/width, constraints.maxHeight/height);
       final left = (constraints.maxWidth-width*zoom)/2;
       final top = (constraints.maxHeight-height*zoom)/2;
@@ -490,7 +537,7 @@ class _DocumentCameraState extends State<DocumentCamera>
           if (mounted) setState(() => torch = !torch);
         } catch (_) { notice('Flash is unavailable on this camera.'); }
       },
-      onAuto: () => setState(() { automatic = !automatic; gate.reset(clearRemoval: true); }),
+      onAuto: () => setState(() { automatic = !automatic; invalidateDetection(); gate.reset(clearRemoval: true); }),
       onEnhance: () => setState(() => enhance = !enhance),
       onBatch: (value) {
         if (pages.isNotEmpty) { notice('Finish this scan before changing page mode.'); return; }
