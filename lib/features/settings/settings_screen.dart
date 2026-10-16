@@ -1,3 +1,4 @@
+import '../../theme/app_motion.dart';
 import '../../l10n/language_options.dart';
 import 'package:pdf_scanner/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -297,6 +298,7 @@ class _ThemeScreenState extends State<ThemeScreen> {
       checked: selected, inMutuallyExclusiveGroup: true,
       enabled: !saving, label: context.tr(themeModeLabel(mode)),
       child: Material(color: p.surface,
+        animationDuration: AppMotion.duration(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14),
           side: BorderSide(color: selected ? p.primary : p.outline,
             width: selected ? 1.409 : .939)),
@@ -347,11 +349,13 @@ class _ReferenceSwitch extends StatelessWidget {
     child: InkWell(onTap: onChanged == null ? null : () => onChanged!(!value),
       borderRadius: BorderRadius.circular(24),
       child: SizedBox(width: 44, height: 44, child: Center(
-        child: AnimatedContainer(duration: const Duration(milliseconds: 160),
+        child: AnimatedContainer(duration: AppMotion.duration(context),
+          curve: AppMotion.curve,
           width: 41, height: 25.4, padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(14),
             color: value ? AppPalette.of(context).primary : AppPalette.of(context).controlOutline),
-          child: AnimatedAlign(duration: const Duration(milliseconds: 160),
+          child: AnimatedAlign(duration: AppMotion.duration(context),
+            curve: AppMotion.curve,
             alignment: value ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
             child: Container(width: 19.4, height: 19.4,
               decoration: BoxDecoration(shape: BoxShape.circle,

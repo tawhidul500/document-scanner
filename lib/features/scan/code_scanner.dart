@@ -328,7 +328,8 @@ class _CodeScannerState extends State<CodeScanner>
               errorBuilder: (_,exception) => const ColoredBox(color: Colors.black)),
             IgnorePointer(child: AnimatedBuilder(animation: sweep,
               builder: (_,child) => CustomPaint(painter: _ScanOverlay(
-                frame: frame, qr: widget.qrOnly, progress: sweep.value)))),
+                frame: frame, qr: widget.qrOnly, progress: MediaQuery.disableAnimationsOf(context)
+                  ? .5 : Curves.easeInOutSine.transform(sweep.value))))),
             if (error != null) Center(child: TextButton(onPressed: start, child: const AppText('Retry'))),
           ]);
         }),

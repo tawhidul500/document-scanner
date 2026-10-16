@@ -1,3 +1,4 @@
+import '../../theme/app_motion.dart';
 import 'package:pdf_scanner/l10n/app_localizations.dart';
 import 'dart:math' as math;
 
@@ -14,11 +15,11 @@ Future<CameraAction?> showCameraActionMenu(
     barrierDismissible: true,
     barrierLabel: context.tr('Close scan options'),
     barrierColor: const Color(0x700C0C0C),
-    transitionDuration: const Duration(milliseconds: 180),
+    transitionDuration: AppMotion.duration(context),
     pageBuilder: (context, animation, secondaryAnimation) =>
         CameraActionMenu(anchor: anchor),
     transitionBuilder: (context, animation, secondaryAnimation, child) =>
-        FadeTransition(opacity: animation, child: child),
+        FadeTransition(opacity: animation.drive(CurveTween(curve: AppMotion.curve)), child: child),
   );
   final action = await Navigator.of(context, rootNavigator: true).push(route);
   // Keep the underlying camera hidden until the close button has faded out.

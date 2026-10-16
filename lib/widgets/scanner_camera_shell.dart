@@ -1,3 +1,4 @@
+import '../theme/app_motion.dart';
 import 'package:pdf_scanner/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -58,7 +59,8 @@ class ScannerCameraShell extends StatelessWidget {
             decoration: BoxDecoration(color: Colors.black.withValues(alpha: .55),
               borderRadius: BorderRadius.circular(22)),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 8, height: 8, decoration: BoxDecoration(
+              AnimatedContainer(duration: AppMotion.duration(context), curve: AppMotion.curve,
+                width: 8, height: 8, decoration: BoxDecoration(
                 color: detected ? scannerMint : Colors.white54, shape: BoxShape.circle)),
               const SizedBox(width: 8),
               Flexible(child: AppText(status, textAlign: TextAlign.center,
@@ -162,7 +164,7 @@ class _ScannerModeStripState extends State<ScannerModeStrip> {
             child: TextButton(key: ValueKey('scanner-mode-${mode.name}'),
               onPressed: widget.enabled && widget.onChanged != null
                 ? () => controller.animateToPage(index,
-                    duration: const Duration(milliseconds: 200), curve: Curves.easeOut)
+                    duration: AppMotion.duration(context), curve: AppMotion.curve)
                 : null,
               style: TextButton.styleFrom(padding: EdgeInsets.zero,
                 foregroundColor: mode == widget.kind ? scannerMint : const Color(0xFFCFD3D8),

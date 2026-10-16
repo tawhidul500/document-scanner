@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_motion.dart';
 import 'package:flutter/services.dart';
 
 /// Semantic UI colors. Paper, camera pixels and signature ink are not themed.
@@ -67,6 +68,14 @@ class AppThemes {
     );
     return ThemeData(
       useMaterial3: true, brightness: brightness, fontFamily: 'Inter',
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {
+        TargetPlatform.android: AppPageTransitions(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.windows: AppPageTransitions(),
+        TargetPlatform.linux: AppPageTransitions(),
+        TargetPlatform.fuchsia: AppPageTransitions(),
+      }),
       colorScheme: scheme, scaffoldBackgroundColor: p.background,
       canvasColor: p.surface, cardColor: p.surface, dividerColor: p.outline,
       disabledColor: p.disabled,

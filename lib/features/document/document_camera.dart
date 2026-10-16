@@ -536,7 +536,8 @@ class _DocumentCameraState extends State<DocumentCamera>
           if (widget.idCard && quad == null && !busy) IgnorePointer(child: CustomPaint(
             painter: _IdCardGuidePainter(
               idCardGuide(constraints.maxWidth, constraints.maxHeight),
-              progress: scanAnimation))),
+              progress: MediaQuery.disableAnimationsOf(context)
+                  ? const AlwaysStoppedAnimation<double>(.5) : scanAnimation))),
         ]));
     });
   }
@@ -632,7 +633,8 @@ class _IdCardGuidePainter extends CustomPainter {
       canvas.drawLine(corner, corner + Offset(dx, 0), outline);
       canvas.drawLine(corner, corner + Offset(0, dy), outline);
     }
-    final y = rect.top + rect.height * progress.value;
+    final y = rect.top + rect.height *
+        Curves.easeInOutSine.transform(progress.value);
     final band = Rect.fromLTWH(
       rect.left, y, rect.width, rect.height * .22);
     canvas.save();

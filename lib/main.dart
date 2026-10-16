@@ -41,7 +41,10 @@ class ScannerApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppThemes.light,
       darkTheme: AppThemes.dark,
-      themeAnimationDuration: Duration.zero,
+      themeAnimationDuration: WidgetsBinding.instance.platformDispatcher
+          .accessibilityFeatures.disableAnimations
+          ? Duration.zero : const Duration(milliseconds: 250),
+      themeAnimationCurve: Curves.easeInOutCubic,
       builder: (context, child) {
         final palette = AppPalette.of(context);
         return AnnotatedRegion<SystemUiOverlayStyle>(

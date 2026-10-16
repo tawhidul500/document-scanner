@@ -1,3 +1,4 @@
+import '../theme/app_motion.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
@@ -59,10 +60,16 @@ class ReferenceHomeNavigation extends StatelessWidget {
         child: Material(color: Colors.transparent,
           child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(16),
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(icon, size: 27, color: color),
+              AnimatedScale(
+                scale: selected ? 1.06 : 1,
+                duration: AppMotion.duration(context),
+                curve: AppMotion.curve,
+                child: Icon(icon, size: 27, color: color)),
               const SizedBox(height: 5),
-              AppText(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 13, height: 1.2, color: color)),
+              AnimatedDefaultTextStyle(
+                duration: AppMotion.duration(context), curve: AppMotion.curve,
+                style: TextStyle(fontFamily: 'Inter', fontSize: 13, height: 1.2, color: color),
+                child: AppText(label, maxLines: 1, overflow: TextOverflow.ellipsis)),
             ]),
           ),
         ),
