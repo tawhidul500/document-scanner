@@ -697,11 +697,10 @@ class AboutAppScreen extends StatelessWidget {
 }
 
 class _SettingsShell extends StatelessWidget {
-  const _SettingsShell({required this.child, this.title, this.brand = false, this.onScan, this.showNavigation = true});
+  const _SettingsShell({required this.child, this.title, this.brand = false, this.onScan});
   final Widget child;
   final String? title;
   final bool brand;
-  final bool showNavigation;
   final VoidCallback? onScan;
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
@@ -759,7 +758,7 @@ class _SettingsShell extends StatelessWidget {
                 ),
 
         ),
-        bottomNavigationBar: !showNavigation ? null : ReferenceHomeNavigation(
+        bottomNavigationBar: ReferenceHomeNavigation(
           settingsSelected: true,
           homeSelected: false,
           onHome: () => Navigator.of(context).popUntil((route) => route.isFirst),
